@@ -186,7 +186,7 @@ Phone : 085-6030224
 **ผู้รับผิดชอบ :** อารี (PO)
 
 * **Week 6 Finalize Requirements & Submission (D1 Due)**  
-- ทำเอกสาร SRS เสร็จสมบูรณ์
+- ทำเอกสาร SRS 
 
 **ผู้รับผิดชอบ :** อารี (PO)
 
@@ -200,6 +200,10 @@ Phone : 085-6030224
 
 * **Deliverable D1 (ส่งสัปดาห์ที่ 6\) :** Project Charter (Final), User Stories, SRS, Use Case, Activity, ER  
 * **Week 7** **Design Phase (D2 Due)**  
+- ทำเอกสาร SRS เสร็จสมบูรณ์
+
+**ผู้รับผิดชอบ :** อารี (PO)
+
 - พาทำ Sprint Planning เพื่อแบ่งงานย่อยๆ ว่าสัปดาห์นี้ใครจะทำปุ่มไหน ใครจะทำฐานข้อมูลส่วนไหน
 
 **ผู้รับผิดชอบ :** ณัฎฐกาญน์ (SM)
