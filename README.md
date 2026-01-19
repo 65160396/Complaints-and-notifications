@@ -1,4 +1,4 @@
-# 📢 University Issue Reporting and Emergency Notification System
+# University Issue Reporting and Emergency Notification System
 
 > **ระบบร้องเรียนปัญหาและแจ้งเตือนข่าวสารภายในมหาวิทยาลัย**
 ## 📖 เกี่ยวกับโครงการ (About The Project)
