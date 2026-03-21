@@ -4,6 +4,7 @@ import {
   getMyComplaints,
   createComplaint,
   updateStatus,
+  updatePriority,
   cancelComplaint,
   getComplaintImages,
 } from '../controllers/complaintController'
@@ -14,8 +15,9 @@ const router = Router()
 
 router.get('/', protect, getComplaints)
 router.get('/my', protect, getMyComplaints)
-router.post('/', protect, upload.array('images', 5), createComplaint)  // รับรูปได้สูงสุด 5 รูป
+router.post('/', protect, upload.array('images', 5), createComplaint)
 router.patch('/:id/status', protect, updateStatus)
+router.patch('/:id/priority', protect, updatePriority)   // D8
 router.patch('/:id/cancel', protect, cancelComplaint)
 router.get('/:id/images', protect, getComplaintImages)
 

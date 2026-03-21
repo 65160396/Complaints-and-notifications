@@ -27,7 +27,7 @@ export const getMyComplaints = async (req: AuthRequest, res: Response) => {
   res.json(rows)
 }
 
-// US8/D9 — สร้างคำร้องพร้อมรูปภาพ (multipart/form-data)
+// US8/D9 — สร้างคำร้องพร้อมรูปภาพ
 export const createComplaint = async (req: AuthRequest, res: Response) => {
   const { title, description, category_id, location_id, priority } = req.body
   const files = req.files as Express.Multer.File[]
@@ -40,7 +40,6 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
 
   const issueId = result.insertId
 
-  // บันทึก path รูปภาพถ้ามีการแนบมา
   if (files && files.length > 0) {
     for (const file of files) {
       await pool.execute(
@@ -53,6 +52,7 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
   res.status(201).json({ message: 'Issue reported successfully', issue_id: issueId })
 }
 
+// อัปเดตสถานะ
 export const updateStatus = async (req: AuthRequest, res: Response) => {
   const { id } = req.params
   const { status } = req.body
@@ -61,6 +61,28 @@ export const updateStatus = async (req: AuthRequest, res: Response) => {
     [status, id]
   )
   res.json({ message: 'Status updated' })
+}
+
+// D8 — กำหนดระดับความเร่งด่วน (เฉพาะ personnel/samo/officer/admin)
+export const updatePriority = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  const { priority } = req.body
+  const allowedRoles = ['personnel', 'samo', 'officer', 'admin']
+
+  if (!allowedRoles.includes(req.user!.role)) {
+    return res.status(403).json({ message: 'ไม่มีสิทธิ์เปลี่ยนระดับความเร่งด่วน' })
+  }
+
+  const validPriorities = ['low', 'medium', 'high']
+  if (!validPriorities.includes(priority)) {
+    return res.status(400).json({ message: 'ระดับความเร่งด่วนไม่ถูกต้อง' })
+  }
+
+  await pool.execute(
+    'UPDATE issue_report SET priority = ? WHERE issue_id = ?',
+    [priority, id]
+  )
+  res.json({ message: 'Priority updated' })
 }
 
 // US10/D10 — ยกเลิกการร้องเรียน
