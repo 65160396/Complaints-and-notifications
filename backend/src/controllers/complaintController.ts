@@ -27,14 +27,30 @@ export const getMyComplaints = async (req: AuthRequest, res: Response) => {
   res.json(rows)
 }
 
+// US8/D9 — สร้างคำร้องพร้อมรูปภาพ (multipart/form-data)
 export const createComplaint = async (req: AuthRequest, res: Response) => {
   const { title, description, category_id, location_id, priority } = req.body
-  await pool.execute(
+  const files = req.files as Express.Multer.File[]
+
+  const [result]: any = await pool.execute(
     `INSERT INTO issue_report (user_id, title, description, category_id, location_id, priority, status)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [req.user!.id, title, description, category_id, location_id, priority || 'medium', 'pending']
   )
-  res.status(201).json({ message: 'Issue reported successfully' })
+
+  const issueId = result.insertId
+
+  // บันทึก path รูปภาพถ้ามีการแนบมา
+  if (files && files.length > 0) {
+    for (const file of files) {
+      await pool.execute(
+        'INSERT INTO issue_image (issue_id, image_path) VALUES (?, ?)',
+        [issueId, file.path]
+      )
+    }
+  }
+
+  res.status(201).json({ message: 'Issue reported successfully', issue_id: issueId })
 }
 
 export const updateStatus = async (req: AuthRequest, res: Response) => {
@@ -48,23 +64,19 @@ export const updateStatus = async (req: AuthRequest, res: Response) => {
 }
 
 // US10/D10 — ยกเลิกการร้องเรียน
-// เฉพาะเจ้าของคำร้อง และต้องอยู่ในสถานะ pending เท่านั้น
 export const cancelComplaint = async (req: AuthRequest, res: Response) => {
   const { id } = req.params
   const userId = req.user!.id
 
-  // ตรวจสอบว่าคำร้องนี้เป็นของ user นี้ และ status เป็น pending
   const [rows]: any = await pool.execute(
     'SELECT * FROM issue_report WHERE issue_id = ? AND user_id = ?',
     [id, userId]
   )
 
   const complaint = rows[0]
-
   if (!complaint) {
     return res.status(404).json({ message: 'ไม่พบคำร้องนี้' })
   }
-
   if (complaint.status !== 'pending') {
     return res.status(400).json({ message: 'ยกเลิกได้เฉพาะคำร้องที่อยู่ในสถานะรอดำเนินการเท่านั้น' })
   }
@@ -73,6 +85,15 @@ export const cancelComplaint = async (req: AuthRequest, res: Response) => {
     'UPDATE issue_report SET status = ? WHERE issue_id = ?',
     ['cancelled', id]
   )
-
   res.json({ message: 'ยกเลิกคำร้องเรียบร้อยแล้ว' })
+}
+
+// US8/D9 — ดึงรูปภาพของคำร้อง
+export const getComplaintImages = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  const [rows] = await pool.execute(
+    'SELECT * FROM issue_image WHERE issue_id = ? ORDER BY uploaded_at ASC',
+    [id]
+  )
+  res.json(rows)
 }
