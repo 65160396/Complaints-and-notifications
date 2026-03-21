@@ -85,6 +85,8 @@ export default function MyComplaintsPage() {
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
+  const [cancellingId, setCancellingId] = useState<number | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
 
   useEffect(() => {
     const user = getUser()
@@ -94,6 +96,21 @@ export default function MyComplaintsPage() {
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false))
   }, [])
+
+  const handleCancel = async (issueId: number) => {
+    setCancellingId(issueId)
+    try {
+      await api.patch(`/complaints/${issueId}/cancel`)
+      setComplaints(prev =>
+        prev.map(c => c.issue_id === issueId ? { ...c, status: 'cancelled' } : c)
+      )
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setCancellingId(null)
+      setConfirmId(null)
+    }
+  }
 
   const filtered = filterStatus === 'all'
     ? complaints
@@ -119,7 +136,6 @@ export default function MyComplaintsPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
 
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">การร้องเรียนของฉัน</h1>
           <p className="text-gray-400 text-sm mt-1">ติดตามสถานะคำร้องที่คุณแจ้งไว้</p>
@@ -168,8 +184,13 @@ export default function MyComplaintsPage() {
             {filtered.map(c => {
               const sCfg = statusConfig[c.status] || statusConfig['pending']
               const pCfg = priorityConfig[c.priority] || priorityConfig['medium']
+              const isConfirming = confirmId === c.issue_id
+              const isCancelling = cancellingId === c.issue_id
+
               return (
-                <div key={c.issue_id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                <div key={c.issue_id} className={`bg-white rounded-2xl border p-5 shadow-sm transition-opacity
+                  ${c.status === 'cancelled' ? 'opacity-60 border-gray-100' : 'border-gray-100'}`}>
+
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -187,9 +208,40 @@ export default function MyComplaintsPage() {
                         📍 {c.building} ชั้น {c.floor} ห้อง {c.room}
                       </p>
                     </div>
-                    <span className={`text-xs px-3 py-1.5 rounded-full font-medium border whitespace-nowrap ${sCfg.color}`}>
-                      {sCfg.icon} {sCfg.label}
-                    </span>
+
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className={`text-xs px-3 py-1.5 rounded-full font-medium border whitespace-nowrap ${sCfg.color}`}>
+                        {sCfg.icon} {sCfg.label}
+                      </span>
+
+                      {/* ปุ่มยกเลิก — เฉพาะ pending เท่านั้น */}
+                      {c.status === 'pending' && (
+                        isConfirming ? (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => setConfirmId(null)}
+                              className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                            >
+                              ไม่ใช่
+                            </button>
+                            <button
+                              onClick={() => handleCancel(c.issue_id)}
+                              disabled={isCancelling}
+                              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                            >
+                              {isCancelling ? 'กำลังยกเลิก...' : 'ยืนยัน'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmId(c.issue_id)}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            ยกเลิกคำร้อง
+                          </button>
+                        )
+                      )}
+                    </div>
                   </div>
 
                   <StatusTimeline status={c.status} />

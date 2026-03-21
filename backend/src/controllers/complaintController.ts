@@ -46,3 +46,33 @@ export const updateStatus = async (req: AuthRequest, res: Response) => {
   )
   res.json({ message: 'Status updated' })
 }
+
+// US10/D10 — ยกเลิกการร้องเรียน
+// เฉพาะเจ้าของคำร้อง และต้องอยู่ในสถานะ pending เท่านั้น
+export const cancelComplaint = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  const userId = req.user!.id
+
+  // ตรวจสอบว่าคำร้องนี้เป็นของ user นี้ และ status เป็น pending
+  const [rows]: any = await pool.execute(
+    'SELECT * FROM issue_report WHERE issue_id = ? AND user_id = ?',
+    [id, userId]
+  )
+
+  const complaint = rows[0]
+
+  if (!complaint) {
+    return res.status(404).json({ message: 'ไม่พบคำร้องนี้' })
+  }
+
+  if (complaint.status !== 'pending') {
+    return res.status(400).json({ message: 'ยกเลิกได้เฉพาะคำร้องที่อยู่ในสถานะรอดำเนินการเท่านั้น' })
+  }
+
+  await pool.execute(
+    'UPDATE issue_report SET status = ? WHERE issue_id = ?',
+    ['cancelled', id]
+  )
+
+  res.json({ message: 'ยกเลิกคำร้องเรียบร้อยแล้ว' })
+}
