@@ -6,6 +6,7 @@ import authRoutes from './routes/auth'
 import complaintRoutes from './routes/complaints'
 import categoryRoutes from './routes/categories'
 import locationRoutes from './routes/locations'
+import notificationRoutes from './routes/notifications'
 import pool from './db'
 
 dotenv.config()
@@ -26,6 +27,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/complaints', complaintRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/locations', locationRoutes)
+app.use('/api/notifications', notificationRoutes)
 
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log(`Server running on :${PORT}`))

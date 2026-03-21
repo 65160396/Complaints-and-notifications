@@ -1,6 +1,7 @@
 import { Response } from 'express'
 import pool from '../db'
 import { AuthRequest } from '../middleware/authMiddleware'
+import { createNotification } from './notificationController'
 
 export const getComplaints = async (req: AuthRequest, res: Response) => {
   const [rows] = await pool.execute(`
@@ -27,7 +28,7 @@ export const getMyComplaints = async (req: AuthRequest, res: Response) => {
   res.json(rows)
 }
 
-// US8/D9 — สร้างคำร้องพร้อมรูปภาพ
+// US8/D9 — สร้างคำร้องพร้อมรูปภาพ + แจ้ง personnel/samo/officer
 export const createComplaint = async (req: AuthRequest, res: Response) => {
   const { title, description, category_id, location_id, priority } = req.body
   const files = req.files as Express.Multer.File[]
@@ -37,7 +38,6 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [req.user!.id, title, description, category_id, location_id, priority || 'medium', 'pending']
   )
-
   const issueId = result.insertId
 
   if (files && files.length > 0) {
@@ -49,21 +49,55 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
     }
   }
 
+  // US6 — แจ้งเตือน personnel/samo/officer ว่ามีคำร้องใหม่
+  const [staffRows]: any = await pool.execute(
+    `SELECT user_id FROM app_user WHERE role IN ('personnel', 'samo', 'officer', 'admin')`
+  )
+  for (const staff of staffRows) {
+    await createNotification(
+      staff.user_id,
+      `มีคำร้องใหม่: "${title}"`,
+      issueId
+    )
+  }
+
   res.status(201).json({ message: 'Issue reported successfully', issue_id: issueId })
 }
 
-// อัปเดตสถานะ
+// อัปเดตสถานะ + แจ้งเจ้าของคำร้อง
 export const updateStatus = async (req: AuthRequest, res: Response) => {
   const { id } = req.params
   const { status } = req.body
+
+  // ดึงข้อมูลคำร้องก่อนเพื่อรู้ว่าเจ้าของคือใคร
+  const [rows]: any = await pool.execute(
+    'SELECT user_id, title FROM issue_report WHERE issue_id = ?',
+    [id]
+  )
+  const complaint = rows[0]
+
   await pool.execute(
     'UPDATE issue_report SET status = ? WHERE issue_id = ?',
     [status, id]
   )
+
+  // US6 — แจ้งเตือนเจ้าของคำร้องเมื่อสถานะเปลี่ยน
+  if (complaint) {
+    const statusMessages: Record<string, string> = {
+      in_progress: `คำร้อง "${complaint.title}" กำลังได้รับการดำเนินการแล้ว`,
+      resolved:    `คำร้อง "${complaint.title}" ได้รับการแก้ไขเรียบร้อยแล้ว ✅`,
+      cancelled:   `คำร้อง "${complaint.title}" ถูกยกเลิก`,
+    }
+    const message = statusMessages[status]
+    if (message) {
+      await createNotification(complaint.user_id, message, Number(id))
+    }
+  }
+
   res.json({ message: 'Status updated' })
 }
 
-// D8 — กำหนดระดับความเร่งด่วน (เฉพาะ personnel/samo/officer/admin)
+// D8 — กำหนดระดับความเร่งด่วน
 export const updatePriority = async (req: AuthRequest, res: Response) => {
   const { id } = req.params
   const { priority } = req.body
@@ -94,8 +128,8 @@ export const cancelComplaint = async (req: AuthRequest, res: Response) => {
     'SELECT * FROM issue_report WHERE issue_id = ? AND user_id = ?',
     [id, userId]
   )
-
   const complaint = rows[0]
+
   if (!complaint) {
     return res.status(404).json({ message: 'ไม่พบคำร้องนี้' })
   }
