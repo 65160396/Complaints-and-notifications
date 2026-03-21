@@ -262,6 +262,11 @@ export default function Navbar() {
                     จัดการโปรไฟล์
                   </button>
                   <button
+                    onClick={() => { setUserMenuOpen(false); router.push("/notification-settings") }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                    ตั้งค่าแจ้งเตือน
+                  </button>
+                  <button
                     onClick={() => { logout(); router.push('/login') }}
                     className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
                     ออกจากระบบ

@@ -45,13 +45,32 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
   res.json({ message: 'All marked as read' })
 }
 
-// helper: สร้าง notification (ใช้เรียกจาก controller อื่น)
+// helper: สร้าง notification โดยเช็ค settings ก่อนเสมอ
+// type: 'status_change' | 'new_complaint'
 export const createNotification = async (
   userId: number,
   message: string,
   issueId?: number,
-  channel: string = 'in_app'
+  channel: string = 'in_app',
+  type: 'status_change' | 'new_complaint' = 'status_change'
 ) => {
+  // ดึง settings ของ user นี้
+  const [settingsRows]: any = await pool.execute(
+    'SELECT * FROM notification_settings WHERE user_id = ?',
+    [userId]
+  )
+  const settings = settingsRows[0]
+
+  // ถ้าไม่มี settings = ใช้ค่า default (เปิดทุกอย่าง)
+  const inAppEnabled      = settings ? settings.in_app_enabled       : 1
+  const notifyStatus      = settings ? settings.notify_status_change : 1
+  const notifyNewComplaint = settings ? settings.notify_new_complaint : 1
+
+  // เช็คว่าควรส่งหรือไม่
+  if (!inAppEnabled) return
+  if (type === 'status_change'  && !notifyStatus)       return
+  if (type === 'new_complaint'  && !notifyNewComplaint) return
+
   await pool.execute(
     `INSERT INTO notification (user_id, issue_id, message, channel, is_read)
      VALUES (?, ?, ?, ?, 0)`,

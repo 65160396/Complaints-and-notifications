@@ -7,6 +7,7 @@ import complaintRoutes from './routes/complaints'
 import categoryRoutes from './routes/categories'
 import locationRoutes from './routes/locations'
 import notificationRoutes from './routes/notifications'
+import notificationSettingsRoutes from './routes/notification-settings'
 import profileRoutes from './routes/profile'
 import surveyRoutes from './routes/survey'
 import pool from './db'
@@ -30,6 +31,7 @@ app.use('/api/complaints', complaintRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/locations', locationRoutes)
 app.use('/api/notifications', notificationRoutes)
+app.use('/api/notification-settings', notificationSettingsRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/survey', surveyRoutes)
 
