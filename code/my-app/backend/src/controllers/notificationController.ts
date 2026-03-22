@@ -1,0 +1,79 @@
+import { Response } from 'express'
+import pool from '../db'
+import { AuthRequest } from '../middleware/authMiddleware'
+
+// ดึง notification ของ user คนนี้
+export const getNotifications = async (req: AuthRequest, res: Response) => {
+  const [rows] = await pool.execute(`
+    SELECT n.*, 
+           i.title as issue_title,
+           i.status as issue_status
+    FROM notification n
+    LEFT JOIN issue_report i ON n.issue_id = i.issue_id
+    WHERE n.user_id = ?
+    ORDER BY n.created_at DESC
+    LIMIT 50
+  `, [req.user!.id])
+  res.json(rows)
+}
+
+// จำนวน notification ที่ยังไม่ได้อ่าน
+export const getUnreadCount = async (req: AuthRequest, res: Response) => {
+  const [rows]: any = await pool.execute(
+    'SELECT COUNT(*) as count FROM notification WHERE user_id = ? AND is_read = 0',
+    [req.user!.id]
+  )
+  res.json({ count: rows[0].count })
+}
+
+// mark อ่านแล้วทีละอัน
+export const markAsRead = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params
+  await pool.execute(
+    'UPDATE notification SET is_read = 1 WHERE notification_id = ? AND user_id = ?',
+    [id, req.user!.id]
+  )
+  res.json({ message: 'Marked as read' })
+}
+
+// mark อ่านแล้วทั้งหมด
+export const markAllAsRead = async (req: AuthRequest, res: Response) => {
+  await pool.execute(
+    'UPDATE notification SET is_read = 1 WHERE user_id = ? AND is_read = 0',
+    [req.user!.id]
+  )
+  res.json({ message: 'All marked as read' })
+}
+
+// helper: สร้าง notification โดยเช็ค settings ก่อนเสมอ
+// type: 'status_change' | 'new_complaint'
+export const createNotification = async (
+  userId: number,
+  message: string,
+  issueId?: number,
+  channel: string = 'in_app',
+  type: 'status_change' | 'new_complaint' = 'status_change'
+) => {
+  // ดึง settings ของ user นี้
+  const [settingsRows]: any = await pool.execute(
+    'SELECT * FROM notification_settings WHERE user_id = ?',
+    [userId]
+  )
+  const settings = settingsRows[0]
+
+  // ถ้าไม่มี settings = ใช้ค่า default (เปิดทุกอย่าง)
+  const inAppEnabled      = settings ? settings.in_app_enabled       : 1
+  const notifyStatus      = settings ? settings.notify_status_change : 1
+  const notifyNewComplaint = settings ? settings.notify_new_complaint : 1
+
+  // เช็คว่าควรส่งหรือไม่
+  if (!inAppEnabled) return
+  if (type === 'status_change'  && !notifyStatus)       return
+  if (type === 'new_complaint'  && !notifyNewComplaint) return
+
+  await pool.execute(
+    `INSERT INTO notification (user_id, issue_id, message, channel, is_read)
+     VALUES (?, ?, ?, ?, 0)`,
+    [userId, issueId || null, message, channel]
+  )
+}
