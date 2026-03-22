@@ -1,16 +1,3 @@
-# System Architecture (MVC)
-
-## Overview
-This system follows the MVC (Model-View-Controller) architecture:
-- View (Presentation Layer)
-- Controller (Business Layer)
-- Model (Data Layer)
-- Database (MySQL / PostgreSQL)
-
----
-
-## Diagram
-
 ```mermaid
 graph TD
 
@@ -18,7 +5,7 @@ graph TD
 User --> LoginPage
 
 %% View Layer
-subgraph View [View (Presentation Layer)]
+subgraph View_Presentation_Layer
 LoginPage
 StudentDashboard
 SamoDashboard
@@ -27,7 +14,7 @@ ComplaintForm
 end
 
 %% Controller Layer
-subgraph Controller [Controller (Business Layer)]
+subgraph Controller_Business_Layer
 AuthController
 UserController
 AdminController
@@ -36,7 +23,7 @@ ComplaintController
 end
 
 %% Model Layer
-subgraph Model [Model (Data Layer)]
+subgraph Model_Data_Layer
 UserModel
 Role
 Notification
@@ -46,7 +33,7 @@ Location
 end
 
 %% Database
-Database[(Database\n(MySQL / PostgreSQL))]
+Database[(Database - MySQL / PostgreSQL)]
 
 %% View -> Controller
 LoginPage --> AuthController
