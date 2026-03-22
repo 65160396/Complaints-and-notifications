@@ -1,0 +1,5 @@
+process.env.JWT_SECRET = 'test_secret_key_for_jest'
+process.env.DB_HOST = 'localhost'
+process.env.DB_USER = 'root'
+process.env.DB_PASSWORD = ''
+process.env.DB_NAME = 'test_db'
