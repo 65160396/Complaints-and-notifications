@@ -4,7 +4,7 @@
 
 ## **1.MVC Layers**
 
-### **1.1 Model**
+### **1.1 Model (Data Layer)** 
 
 หน้าที่
 
@@ -20,7 +20,7 @@
 * Category  
 * Location
 
-### **1.2 View**
+### **1.2 View (Presentation Layer)** 
 
 หน้าที่
 
@@ -35,7 +35,7 @@
 * Admin Panel  
 * Complaint Form
 
-### **1.3 Controller**
+### **1.3 Controller (Business Layer)** 
 
 หน้าที่
 
@@ -51,25 +51,81 @@
 * NotificationController  
 * AdminController
 
+### **1.5 Persistence Layer**
+
+### ติดต่อกับฐานข้อมูลในระบบคือ
+
+* ORM
+
+* Repository Pattern
+
+* Query Database
+
+
+**1.4 Cross-cutting**
+
+ Notification \+ Role Permission \+ Auth (Authentication)
+
+**ระบบแจ้งเตือน**(Notification)
+
+ระบบจะต้อง แจ้งเตือนหลายฝ่าย
+
+เช่น
+
+* Student
+
+* Officer
+
+* Samo
+
+* Admin
+
+**สิทธิ์ตามบทบาท**(Role Permission)
+
+ในระบมีหลาย Role เช่น
+
+* Student
+
+* Samo
+
+* Officer
+
+* Admin  
+* 
+
+**การยืนยันตัวตนผู้ใช้**(Authentication)
+
+เช่น
+
+* Login
+
+* ตรวจ Token
+
+* ตรวจ Session
+
 ## **2.Components & Relationships**
 
-User
+**User**
 
- ↓
+ **↓**
 
-View
+**View**
 
- ↓
+ **↓**
 
-Controller
+**Controller**
 
- ↓
+ **↓**
 
-Model
+**Model**
 
- ↓
+ **↓**
 
-Database 
+**Database** 
+
+## 
+
+## 
 
 ## **3.Technology Stack Selection (MVC-based)**
 
@@ -85,3 +141,4 @@ Model
 
 * ORM  
 * MySQL หรือ PostgreSQL
+
