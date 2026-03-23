@@ -51,7 +51,7 @@
 * NotificationController  
 * AdminController
 
-### **1.5 Persistence Layer**
+### **1.4 Persistence Layer**
 
 ### ติดต่อกับฐานข้อมูลในระบบคือ
 
@@ -62,7 +62,7 @@
 * Query Database
 
 
-**1.4 Cross-cutting**
+### **1.5 Cross-cutting**
 
  Notification \+ Role Permission \+ Auth (Authentication)
 
