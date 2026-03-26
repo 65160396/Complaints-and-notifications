@@ -4,12 +4,19 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
 export const register = async (req: Request, res: Response) => {
-  const { student_id, employee_code, firstname, lastname, email, password, role, phone } = req.body
+  const { student_id, employee_code, firstname, lastname, email, password, role, phone, department_id } = req.body
   const hashed = await bcrypt.hash(password, 10)
   await pool.execute(
-    `INSERT INTO app_user (student_id, employee_code, firstname, lastname, email, password, role, phone)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [student_id || null, employee_code || null, firstname, lastname, email, hashed, role || 'student', phone || null]
+    `INSERT INTO app_user (student_id, employee_code, firstname, lastname, email, password, role, phone, department_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      student_id    || null,
+      employee_code || null,
+      firstname, lastname, email, hashed,
+      role          || 'student',
+      phone         || null,
+      department_id || null,
+    ]
   )
   res.status(201).json({ message: 'Registered successfully' })
 }
@@ -22,18 +29,19 @@ export const login = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Invalid credentials' })
 
   const token = jwt.sign(
-    { id: user.user_id, email: user.email, role: user.role },
+    { id: user.user_id, email: user.email, role: user.role, department_id: user.department_id },
     process.env.JWT_SECRET!,
     { expiresIn: '1d' }
   )
   res.json({
     token,
     user: {
-      id: user.user_id,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email: user.email,
-      role: user.role
+      id:            user.user_id,
+      firstname:     user.firstname,
+      lastname:      user.lastname,
+      email:         user.email,
+      role:          user.role,
+      department_id: user.department_id,
     }
   })
 }

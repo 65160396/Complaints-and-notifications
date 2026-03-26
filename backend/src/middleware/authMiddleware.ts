@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 
 export interface AuthRequest extends Request {
-  user?: { id: number; email: string; role: string }
+  user?: { id: number; email: string; role: string; department_id: number | null }
 }
 
 export const protect = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -10,7 +10,9 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
   if (!token) return res.status(401).json({ message: 'No token' })
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number; email: string; role: string }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: number; email: string; role: string; department_id: number | null
+    }
     req.user = decoded
     next()
   } catch {
