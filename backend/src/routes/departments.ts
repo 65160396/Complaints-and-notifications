@@ -10,4 +10,15 @@ router.get('/', async (_req, res) => {
   res.json(rows)
 })
 
+// ดึง users ในคณะ สำหรับ Samo มอบหมายงาน (US7)
+router.get('/:dept_id/users', protect, async (req, res) => {
+  const { dept_id } = req.params
+  const [rows] = await pool.execute(
+    `SELECT user_id, firstname, lastname, role FROM app_user
+     WHERE department_id = ? ORDER BY firstname ASC`,
+    [dept_id]
+  )
+  res.json(rows)
+})
+
 export default router

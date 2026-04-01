@@ -1,24 +1,26 @@
 import { Router } from 'express'
 import {
-  getComplaints,
-  getMyComplaints,
-  createComplaint,
-  updateStatus,
-  updatePriority,
-  cancelComplaint,
-  getComplaintImages,
+  getComplaints, getComplaintsByDept, getMyComplaints,
+  createComplaint, updateStatus, acceptComplaint,
+  updateCategory, assignComplaint, forwardComplaint,
+  updatePriority, cancelComplaint, getComplaintImages,
 } from '../controllers/complaintController'
 import { protect } from '../middleware/authMiddleware'
 import upload from '../middleware/uploadMiddleware'
 
 const router = Router()
 
-router.get('/', protect, getComplaints)
-router.get('/my', protect, getMyComplaints)
-router.post('/', protect, upload.array('images', 5), createComplaint)
-router.patch('/:id/status', protect, updateStatus)
-router.patch('/:id/priority', protect, updatePriority)   // D8
-router.patch('/:id/cancel', protect, cancelComplaint)
-router.get('/:id/images', protect, getComplaintImages)
+router.get('/',                    protect, getComplaints)
+router.get('/dept',                protect, getComplaintsByDept)
+router.get('/my',                  protect, getMyComplaints)
+router.post('/',                   protect, upload.array('images', 5), createComplaint)
+router.patch('/:id/status',        protect, updateStatus)
+router.patch('/:id/accept',        protect, acceptComplaint)
+router.patch('/:id/category',      protect, updateCategory)
+router.patch('/:id/assign',        protect, assignComplaint)     // US7
+router.patch('/:id/forward',       protect, forwardComplaint)    // US8
+router.patch('/:id/priority',      protect, updatePriority)
+router.patch('/:id/cancel',        protect, cancelComplaint)
+router.get('/:id/images',          protect, getComplaintImages)
 
 export default router

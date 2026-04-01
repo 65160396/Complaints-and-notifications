@@ -5,15 +5,12 @@ import { AuthRequest } from '../middleware/authMiddleware'
 
 const router = Router()
 
+// ดึง category ตาม role ของ user
 router.get('/', protect, async (req: AuthRequest, res) => {
   const role = req.user!.role
-
-  // กำหนดว่า role นี้ควรเห็น category อะไรบ้าง
-  // personnel/samo/officer/admin เห็น category ของตัวเอง + all
-  // student เห็นเฉพาะ student + all
   let forRoles: string[]
 
-  if (role === 'personnel' || role === 'samo' || role === 'officer' || role === 'admin') {
+  if (['personnel', 'samo', 'officer', 'admin'].includes(role)) {
     forRoles = ['personnel', 'all']
   } else {
     forRoles = ['student', 'all']
@@ -24,7 +21,16 @@ router.get('/', protect, async (req: AuthRequest, res) => {
     `SELECT * FROM category WHERE for_role IN (${placeholders}) ORDER BY category_id ASC`,
     forRoles
   )
+  res.json(rows)
+})
 
+// ดึง category ทั้งหมด (สำหรับ Samo คัดกรอง)
+router.get('/all', protect, async (req: AuthRequest, res) => {
+  const allowedRoles = ['samo', 'officer', 'admin']
+  if (!allowedRoles.includes(req.user!.role)) {
+    return res.status(403).json({ message: 'ไม่มีสิทธิ์' })
+  }
+  const [rows] = await pool.execute('SELECT * FROM category ORDER BY category_id ASC')
   res.json(rows)
 })
 
