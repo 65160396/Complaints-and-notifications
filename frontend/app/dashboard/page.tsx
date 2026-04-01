@@ -275,12 +275,15 @@ export default function DashboardPage() {
 
     const requests = [
       api.get(endpoint),
-      isSamo ? api.get('/categories/all') : Promise.resolve({ data: [] }),
-      isSamo ? api.get(`/departments/${user.department_id}/users`) : Promise.resolve({ data: [] }),
+      api.get('/categories/all'),  // ✅ ดึงทุก role
+      (isSamo || user.role === 'officer')
+        ? api.get(`/departments/${user.department_id}/users`)
+        : Promise.resolve({ data: [] }),
     ]
 
     Promise.all(requests)
       .then(([cRes, catRes, usersRes]) => {
+        console.log('deptUsers:', usersRes.data)  // ✅ เพิ่มตรงนี้
         setComplaints(cRes.data)
         setCategories(catRes.data)
         setDeptUsers(usersRes.data)
@@ -465,8 +468,16 @@ export default function DashboardPage() {
                         </button>
                       )}
 
+                      {/* Officer รับเรื่องจาก forwarded */}
+                      {c.status === 'forwarded' && user?.role === 'officer' && (
+                      <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
+                        className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
+                        {isUpdating ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จ'}
+                      </button>
+                    )}
+
                       {/* US7 — มอบหมายงาน (เฉพาะ in_progress) */}
-                      {isSamo && c.status === 'in_progress' && (
+                      {(isSamo || user?.role === 'officer') && c.status === 'in_progress' && (
                         <button onClick={() => setAssignModal(c)}
                           className="text-xs px-3 py-1.5 rounded-xl font-medium bg-orange-500 hover:bg-orange-600 text-white">
                           👤 มอบหมาย
