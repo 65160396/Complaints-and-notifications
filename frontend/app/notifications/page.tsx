@@ -86,9 +86,21 @@ export default function NotificationsPage() {
               <div
                 key={n.notification_id}
                 onClick={() => {
-                  if (!n.is_read) handleMarkRead(n.notification_id)
-                  if (n.issue_id) router.push('/my-complaints')
-                }}
+                        if (!n.is_read) handleMarkRead(n.notification_id)
+                        
+                        const user = getUser()
+                        console.log('user role:', user?.role)
+                        if (n.issue_id) {
+                          if (user?.role === 'student' || user?.role === 'personnel') {
+                            router.push('/my-complaints')
+                          } else {
+                            // samo, officer, admin
+                            router.push('/dashboard')
+                          }
+                        } else {
+                          router.push('/dashboard')
+                        }
+                      }}
                 className={`flex gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors
                   ${i !== 0 ? 'border-t border-gray-50' : ''}
                   ${!n.is_read ? 'bg-blue-50/40' : ''}`}

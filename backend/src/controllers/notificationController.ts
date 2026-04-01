@@ -72,8 +72,8 @@ export const createNotification = async (
   if (type === 'new_complaint'  && !notifyNewComplaint) return
 
   await pool.execute(
-    `INSERT INTO notification (user_id, issue_id, message, channel, is_read)
-     VALUES (?, ?, ?, ?, 0)`,
-    [userId, issueId || null, message, channel]
+    `INSERT INTO notification (user_id, issue_id, message, channel, is_read, type)
+     VALUES (?, ?, ?, ?, 0, ?)`,
+    [userId, issueId || null, message, channel, type]
   )
 }

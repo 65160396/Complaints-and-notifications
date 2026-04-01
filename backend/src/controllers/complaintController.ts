@@ -31,7 +31,7 @@ export const getComplaintsByDept = async (req: AuthRequest, res: Response) => {
     JOIN category c ON i.category_id = c.category_id
     JOIN location l ON i.location_id = l.location_id
     LEFT JOIN app_user a ON i.accepted_by = a.user_id
-    WHERE u.department_id = ?
+    WHERE (u.department_id = ? OR u.department_id IS NULL)
     ORDER BY i.created_at DESC
   `, [deptId])
   res.json(rows)
@@ -68,10 +68,10 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
   }
 
   const reporterDeptId = req.user!.department_id
-  let staffQuery = `SELECT user_id FROM app_user WHERE role IN ('personnel', 'samo', 'officer', 'admin')`
+  let staffQuery = `SELECT user_id FROM app_user WHERE role IN ('samo', 'officer', 'admin')`
   const staffParams: any[] = []
   if (reporterDeptId) {
-    staffQuery = `SELECT user_id FROM app_user WHERE role IN ('personnel', 'samo', 'officer', 'admin') AND (department_id = ? OR role IN ('officer', 'admin'))`
+    staffQuery = `SELECT user_id FROM app_user WHERE role IN ('samo', 'officer', 'admin') AND (department_id = ? OR role IN ('officer', 'admin'))`
     staffParams.push(reporterDeptId)
   }
 
@@ -100,8 +100,14 @@ export const updateStatus = async (req: AuthRequest, res: Response) => {
       resolved:    `คำร้อง "${complaint.title}" ได้รับการแก้ไขเรียบร้อยแล้ว ✅`,
       cancelled:   `คำร้อง "${complaint.title}" ถูกยกเลิก`,
       forwarded:   `คำร้อง "${complaint.title}" ถูกส่งต่อไปยังเจ้าหน้าที่มหาวิทยาลัยแล้ว`,
+      pending:     `คำร้อง "${complaint.title}" ถูกตั้งค่ากลับเป็นรอดำเนินการ`, // ✅ เพิ่ม
     }
-    if (msgs[status]) await createNotification(complaint.user_id, msgs[status], Number(id), 'in_app', 'status_change')
+    if (msgs[status]) {
+      await createNotification(complaint.user_id, msgs[status], Number(id), 'in_app', 'status_change')
+    } else {
+      // ✅ log เพื่อ debug กรณี status ไม่ตรง
+      console.warn(`[updateStatus] ไม่พบ message สำหรับ status: "${status}"`)
+    }
   }
 
   res.json({ message: 'Status updated' })
@@ -192,7 +198,7 @@ export const assignComplaint = async (req: AuthRequest, res: Response) => {
   await createNotification(
     assigned_to,
     `คุณได้รับมอบหมายให้ดูแลคำร้อง: "${issue.title}"`,
-    Number(id), 'in_app', 'status_change'
+    Number(id), 'in_app', 'new_complaint'
   )
 
   res.json({

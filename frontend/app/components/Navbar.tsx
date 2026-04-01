@@ -18,6 +18,7 @@ interface Notification {
   is_read: number
   issue_id: number | null
   created_at: string
+  type: string
 }
 
 const roleLabel: Record<string, string> = {
@@ -191,10 +192,23 @@ export default function Navbar() {
                         <button
                           key={n.notification_id}
                           onClick={() => {
-                            if (!n.is_read) handleMarkRead(n.notification_id)
-                            if (n.issue_id) router.push('/my-complaints')
-                            setNotifOpen(false)
-                          }}
+                              console.log('type:', n.type, 'role:', user?.role)
+                                if (!n.is_read) handleMarkRead(n.notification_id)
+                                if (n.issue_id) {
+                                  if (user?.role === 'student' || user?.role === 'personnel') {
+                                    if (n.type === 'status_change') {
+                                      router.push('/my-complaints')
+                                    } else {
+                                      router.push('/dashboard')
+                                    }
+                                  } else {
+                                    router.push('/dashboard')
+                                  }
+                                } else {
+                                  router.push('/dashboard')
+                                }
+                                setNotifOpen(false)
+                              }}
                           className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors flex gap-3 items-start
                             ${!n.is_read ? 'bg-blue-50/50' : ''}`}
                         >
