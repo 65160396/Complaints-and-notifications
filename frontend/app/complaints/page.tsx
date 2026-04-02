@@ -19,6 +19,7 @@ interface Complaint {
   accepted_by: number | null
   accepted_firstname: string | null
   accepted_lastname: string | null
+  assigned_to: number | null
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
@@ -48,6 +49,16 @@ export default function ComplaintsPage() {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
   const user = getUser()
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
+
+  const handleUpdateStatus = async (issueId: number, newStatus: string) => {
+    setUpdatingId(issueId)
+    try {
+      await api.patch(`/complaints/${issueId}/status`, { status: newStatus })
+      setComplaints(prev => prev.map(c => c.issue_id === issueId ? { ...c, status: newStatus } : c))
+    } catch { alert('เกิดข้อผิดพลาด') }
+    finally { setUpdatingId(null) }
+  }
 
   // samo/officer/admin ไม่ควรอยู่หน้านี้ → redirect ไป dashboard
   useEffect(() => {
@@ -123,6 +134,7 @@ export default function ComplaintsPage() {
         ) : (
           <div className="space-y-3">
             {filtered.map(c => {
+              console.log('accepted_by:', c.accepted_by, 'user.id:', user?.id)
               const sCfg = statusConfig[c.status] || statusConfig['pending']
               const pCfg = priorityConfig[c.priority] || priorityConfig['medium']
               return (
@@ -159,6 +171,16 @@ export default function ComplaintsPage() {
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${pCfg.color}`}>
                         {pCfg.label}
                       </span>
+
+                      {/* ✅ เพิ่ม — บุคลากรที่ได้รับมอบหมาย */}
+                      {user?.role === 'personnel' && c.assigned_to === user?.id && c.status === 'in_progress' && (
+                        <button
+                          onClick={() => handleUpdateStatus(c.issue_id, 'resolved')}
+                          disabled={updatingId === c.issue_id}
+                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
+                          {updatingId === c.issue_id ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จสิ้น'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

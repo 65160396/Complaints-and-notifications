@@ -10,6 +10,7 @@ interface Notification {
   issue_id: number | null
   issue_title: string | null
   created_at: string
+  type: string
 }
 
 export default function NotificationsPage() {
@@ -86,21 +87,25 @@ export default function NotificationsPage() {
               <div
                 key={n.notification_id}
                 onClick={() => {
-                        if (!n.is_read) handleMarkRead(n.notification_id)
-                        
-                        const user = getUser()
-                        console.log('user role:', user?.role)
-                        if (n.issue_id) {
-                          if (user?.role === 'student' || user?.role === 'personnel') {
-                            router.push('/my-complaints')
-                          } else {
-                            // samo, officer, admin
-                            router.push('/dashboard')
-                          }
-                        } else {
-                          router.push('/dashboard')
-                        }
-                      }}
+                  console.log('type:', n.type, 'role:', getUser()?.role)
+                  if (!n.is_read) handleMarkRead(n.notification_id)
+                  const user = getUser()
+                  if (n.issue_id) {
+                    if (user?.role === 'student') {
+                      router.push('/my-complaints')
+                    } else if (user?.role === 'personnel') {
+                      if (n.type === 'status_change') {
+                        router.push('/my-complaints')
+                      } else {
+                        router.push('/dashboard')
+                      }
+                    } else {
+                      router.push('/dashboard')
+                    }
+                  } else {
+                    router.push('/dashboard')
+                  }
+                }}
                 className={`flex gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors
                   ${i !== 0 ? 'border-t border-gray-50' : ''}
                   ${!n.is_read ? 'bg-blue-50/40' : ''}`}

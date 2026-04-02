@@ -38,7 +38,7 @@ const roleBadgeColor: Record<string, string> = {
 }
 
 const navLinksByRole: Record<string, { href: string; label: string }[]> = {
-  student: [
+ student: [
     { href: '/my-complaints',    label: 'คำร้องของฉัน' },
     { href: '/create-complaint', label: '+ แจ้งเรื่อง' },
   ],
@@ -54,7 +54,7 @@ const navLinksByRole: Record<string, { href: string; label: string }[]> = {
     { href: '/dashboard', label: 'Dashboard' },
   ],
   admin: [
-    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/admin', label: 'Admin' },
   ],
 }
 
@@ -130,7 +130,8 @@ export default function Navbar() {
         <button onClick={() => {
             const role = user?.role
             if (role === 'student' || role === 'personnel') router.push('/my-complaints')
-            else if (role === 'samo' || role === 'officer' || role === 'admin') router.push('/dashboard')
+            else if (role === 'admin') router.push('/admin')
+            else if (role === 'samo' || role === 'officer') router.push('/dashboard')
             else router.push('/login')
           }}
           className="font-bold text-blue-600 text-lg tracking-tight">
@@ -191,16 +192,25 @@ export default function Navbar() {
                       notifications.map(n => (
                         <button
                           key={n.notification_id}
-                          onClick={() => {
-                                if (!n.is_read) handleMarkRead(n.notification_id)
-                                const role = user?.role
-                                if (role === 'student' || role === 'personnel') {
-                                  router.push('/my-complaints')
-                                } else {
-                                  router.push('/dashboard')
-                                }
-                                setNotifOpen(false)
-                              }}
+                         onClick={() => {
+                          if (!n.is_read) handleMarkRead(n.notification_id)
+                          if (n.issue_id) {
+                            if (user?.role === 'student') {
+                              router.push('/my-complaints')
+                            } else if (user?.role === 'personnel') {
+                              if (n.type === 'status_change') {
+                                router.push('/my-complaints')  // แจ้งสถานะเปลี่ยน → ไปดูคำร้องตัวเอง
+                              } else {
+                                router.push('/dashboard')      // ถูกมอบหมาย → ไป dashboard
+                              }
+                            } else {
+                              router.push('/dashboard')        // samo, officer, admin
+                            }
+                          } else {
+                            router.push('/dashboard')
+                          }
+                          setNotifOpen(false)
+                        }}
                           className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors flex gap-3 items-start
                             ${!n.is_read ? 'bg-blue-50/50' : ''}`}
                         >
@@ -225,19 +235,14 @@ export default function Navbar() {
 
                   {/* Footer */}
                   {notifications.length > 0 && (
-                    <div className="px-4 py-2.5 border-t border-gray-100">
-                      <button
-                        onClick={() => {
-                            const role = user?.role
-                            if (role === 'student' || role === 'personnel') router.push('/my-complaints')
-                            else router.push('/dashboard')
-                            setNotifOpen(false)
-                          }}
-                        className="w-full text-center text-xs text-blue-600 hover:underline">
-                        ดูทั้งหมด
-                      </button>
-                    </div>
-                  )}
+                      <div className="px-4 py-2.5 border-t border-gray-100">
+                        <button
+                          onClick={() => { router.push('/notifications'); setNotifOpen(false) }}
+                          className="w-full text-center text-xs text-blue-600 hover:underline">
+                          ดูทั้งหมด
+                        </button>
+                      </div>
+                    )}
                 </div>
               </>
             )}

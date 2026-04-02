@@ -23,15 +23,22 @@ function LoginForm() {
     setLoading(true)
     try {
       const res = await api.post('/auth/login', form)
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('user', JSON.stringify(res.data.user))
-      router.push('/complaints')
-    } catch {
-      setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง')
-    } finally {
-      setLoading(false)
+     localStorage.setItem('token', res.data.token)
+     localStorage.setItem('user', JSON.stringify(res.data.user))
+      const role = res.data.user.role
+      if (role === 'student' || role === 'personnel') {
+        router.push('/my-complaints')
+      } else if (role === 'admin') {
+        router.push('/admin')          // ✅ Admin ไปหน้าหลังบ้าน
+      } else {
+        router.push('/dashboard')      // samo, officer
+      }
+      } catch {
+        setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">

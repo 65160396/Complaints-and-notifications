@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import pool from '../db'
-import { protect } from '../middleware/authMiddleware'
+import { protect, AuthRequest } from '../middleware/authMiddleware'
 
 const router = Router()
 
@@ -19,6 +19,36 @@ router.get('/:dept_id/users', protect, async (req, res) => {
     [dept_id]
   )
   res.json(rows)
+})
+
+// Admin — เพิ่มคณะ
+router.post('/', protect, async (req: AuthRequest, res) => {
+  if (req.user!.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' })
+  const { department_name } = req.body
+  if (!department_name) return res.status(400).json({ message: 'กรุณากรอกชื่อคณะ' })
+  const [result]: any = await pool.execute(
+    'INSERT INTO department (department_name) VALUES (?)',
+    [department_name]
+  )
+  res.status(201).json({ message: 'เพิ่มคณะสำเร็จ', department_id: result.insertId })
+})
+
+// Admin — แก้ไขคณะ
+router.put('/:id', protect, async (req: AuthRequest, res) => {
+  if (req.user!.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' })
+  const { department_name } = req.body
+  await pool.execute(
+    'UPDATE department SET department_name = ? WHERE department_id = ?',
+    [department_name, req.params.id]
+  )
+  res.json({ message: 'แก้ไขคณะสำเร็จ' })
+})
+
+// Admin — ลบคณะ
+router.delete('/:id', protect, async (req: AuthRequest, res) => {
+  if (req.user!.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' })
+  await pool.execute('DELETE FROM department WHERE department_id = ?', [req.params.id])
+  res.json({ message: 'ลบคณะสำเร็จ' })
 })
 
 export default router

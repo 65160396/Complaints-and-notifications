@@ -10,20 +10,22 @@ export const getComplaints = async (req: AuthRequest, res: Response) => {
 
   // personnel: เห็นเฉพาะคำร้องของตัวเอง + คำร้องในคณะตัวเอง
   if (role === 'personnel') {
-    const [rows] = await pool.execute(`
-      SELECT i.*, u.firstname, u.lastname, u.email,
-             c.category_name, d.department_name,
-             a.firstname as accepted_firstname, a.lastname as accepted_lastname
-      FROM issue_report i
-      JOIN app_user u ON i.user_id = u.user_id
-      JOIN category c ON i.category_id = c.category_id
-      LEFT JOIN department d ON i.department_id = d.department_id
-      LEFT JOIN app_user a ON i.accepted_by = a.user_id
-      WHERE (i.user_id = ? OR i.department_id = ?)
-      ORDER BY i.created_at DESC
-    `, [userId, deptId])
-    return res.json(rows)
-  }
+  const [rows] = await pool.execute(`
+    SELECT i.*, u.firstname, u.lastname, u.email,
+           c.category_name, d.department_name,
+           a.firstname as accepted_firstname, a.lastname as accepted_lastname,
+           asn.assigned_to
+    FROM issue_report i
+    JOIN app_user u ON i.user_id = u.user_id
+    JOIN category c ON i.category_id = c.category_id
+    LEFT JOIN department d ON i.department_id = d.department_id
+    LEFT JOIN app_user a ON i.accepted_by = a.user_id
+    LEFT JOIN assignment asn ON i.issue_id = asn.issue_id
+    WHERE (i.user_id = ? OR i.department_id = ?)
+    ORDER BY i.created_at DESC
+  `, [userId, deptId ?? null]) 
+  return res.json(rows)
+}
 
   // officer/admin: เห็นทุกคำร้อง
   const [rows] = await pool.execute(`

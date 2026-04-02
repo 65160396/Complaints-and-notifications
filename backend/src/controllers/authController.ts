@@ -25,8 +25,14 @@ export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body
   const [rows]: any = await pool.execute('SELECT * FROM app_user WHERE email = ?', [email])
   const user = rows[0]
-  if (!user || !(await bcrypt.compare(password, user.password)))
-    return res.status(401).json({ message: 'Invalid credentials' })
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+  // บันทึก failed login
+  await pool.execute(
+    'INSERT INTO system_log (type, message, ip_address) VALUES (?, ?, ?)',
+    ['LOGIN_FAILED', `Login failed for email: ${email}`, (req as any).ip || 'unknown']
+  )
+  return res.status(401).json({ message: 'Invalid credentials' })
+}
 
   const token = jwt.sign(
     { id: user.user_id, email: user.email, role: user.role, department_id: user.department_id },

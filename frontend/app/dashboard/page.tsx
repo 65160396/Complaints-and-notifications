@@ -266,12 +266,12 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [deptUsers, setDeptUsers] = useState<DeptUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterStatus, setFilterStatus] = useState('all')
+  const user = getUser()
+  const [filterStatus, setFilterStatus] = useState(user?.role === 'officer' ? 'forwarded' : 'all')
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [acceptingId, setAcceptingId] = useState<number | null>(null)
   const [assignModal, setAssignModal] = useState<Complaint | null>(null)
   const [forwardModal, setForwardModal] = useState<Complaint | null>(null)
-  const user = getUser()
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -285,9 +285,9 @@ export default function DashboardPage() {
     const requests = [
       api.get(endpoint),
       api.get('/categories/all'),
-      (isSamo || user.role === 'officer')
+      isSamo
         ? api.get(`/departments/${user.department_id}/users`)
-        : Promise.resolve({ data: [] }),
+        : api.get('/users/staff'),  // ✅ Officer ดึง staff ทั้งหมด
     ]
 
     Promise.all(requests)
@@ -485,31 +485,41 @@ export default function DashboardPage() {
                       </button>
                     )}
 
-                      {/* US7 — มอบหมายงาน (เฉพาะ in_progress) */}
-                      {(isSamo || user?.role === 'officer') && c.status === 'in_progress' && (
+                      {/* US7 — มอบหมายงาน */}
+                      {/* Samo — มอบหมายเฉพาะ in_progress */}
+                      {isSamo && c.status === 'in_progress' && (
                         <button onClick={() => setAssignModal(c)}
                           className="text-xs px-3 py-1.5 rounded-xl font-medium bg-orange-500 hover:bg-orange-600 text-white">
                           👤 มอบหมาย
                         </button>
                       )}
 
+                      {/* Officer — มอบหมายเฉพาะ forwarded */}
+                      {user?.role === 'officer' && c.status === 'forwarded' && (
+                        <button onClick={() => setAssignModal(c)}
+                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-orange-500 hover:bg-orange-600 text-white">
+                          👤 มอบหมาย
+                        </button>
+                      )}
+
+
                       {/* US8 — ส่งต่อ Officer */}
                       {isSamo && ['pending', 'in_progress'].includes(c.status) && (
-                        <button onClick={() => setForwardModal(c)}
-                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-purple-600 hover:bg-purple-700 text-white">
-                          📤 ส่งต่อ
+                      <button onClick={() => setForwardModal(c)}
+                        className="text-xs px-3 py-1.5 rounded-xl font-medium bg-purple-600 hover:bg-purple-700 text-white">
+                        📤 ส่งต่อ
+                      </button>
+                    )}
+
+                      {isSamo && c.status === 'in_progress' && c.accepted_by === user?.id && !c.accepted_firstname && (
+                        <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
+                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
+                          {isUpdating ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จ'}
                         </button>
                       )}
 
                       {/* ปุ่มแก้ไขเสร็จ */}
-                      {c.status === 'in_progress' && !isSamo && (
-                        <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
-                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
-                          {isUpdating ? 'กำลังบันทึก...' : 'แก้ไขเสร็จแล้ว'}
-                        </button>
-                      )}
-
-                      {isSamo && c.status === 'in_progress' && c.accepted_by === user?.id && (
+                      {isSamo && c.status === 'in_progress' && (
                         <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
                           className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
                           {isUpdating ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จ'}
