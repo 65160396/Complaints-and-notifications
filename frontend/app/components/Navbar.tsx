@@ -39,27 +39,22 @@ const roleBadgeColor: Record<string, string> = {
 
 const navLinksByRole: Record<string, { href: string; label: string }[]> = {
   student: [
-    { href: '/complaints',       label: 'รายการทั้งหมด' },
-    { href: '/my-complaints',    label: 'ของฉัน' },
+    { href: '/my-complaints',    label: 'คำร้องของฉัน' },
     { href: '/create-complaint', label: '+ แจ้งเรื่อง' },
   ],
   personnel: [
-    { href: '/dashboard',        label: 'Dashboard' },
-    { href: '/complaints',       label: 'รายการทั้งหมด' },
-    { href: '/my-complaints',    label: 'ของฉัน' },
+    { href: '/complaints',       label: 'รายการในคณะ' },
+    { href: '/my-complaints',    label: 'คำร้องของฉัน' },
     { href: '/create-complaint', label: '+ แจ้งเรื่อง' },
   ],
   samo: [
-    { href: '/dashboard',     label: 'Dashboard' },
-    { href: '/complaints',    label: 'รายการทั้งหมด' },
+    { href: '/dashboard', label: 'Dashboard' },
   ],
   officer: [
-    { href: '/dashboard',     label: 'Dashboard' },
-    { href: '/complaints',    label: 'รายการทั้งหมด' },
+    { href: '/dashboard', label: 'Dashboard' },
   ],
   admin: [
-    { href: '/dashboard',     label: 'Dashboard' },
-    { href: '/complaints',    label: 'รายการทั้งหมด' },
+    { href: '/dashboard', label: 'Dashboard' },
   ],
 }
 
@@ -132,7 +127,12 @@ export default function Navbar() {
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
 
         {/* Logo */}
-        <button onClick={() => router.push('/complaints')}
+        <button onClick={() => {
+            const role = user?.role
+            if (role === 'student' || role === 'personnel') router.push('/my-complaints')
+            else if (role === 'samo' || role === 'officer' || role === 'admin') router.push('/dashboard')
+            else router.push('/login')
+          }}
           className="font-bold text-blue-600 text-lg tracking-tight">
           IMS
         </button>
@@ -192,18 +192,10 @@ export default function Navbar() {
                         <button
                           key={n.notification_id}
                           onClick={() => {
-                              console.log('type:', n.type, 'role:', user?.role)
                                 if (!n.is_read) handleMarkRead(n.notification_id)
-                                if (n.issue_id) {
-                                  if (user?.role === 'student' || user?.role === 'personnel') {
-                                    if (n.type === 'status_change') {
-                                      router.push('/my-complaints')
-                                    } else {
-                                      router.push('/dashboard')
-                                    }
-                                  } else {
-                                    router.push('/dashboard')
-                                  }
+                                const role = user?.role
+                                if (role === 'student' || role === 'personnel') {
+                                  router.push('/my-complaints')
                                 } else {
                                   router.push('/dashboard')
                                 }
@@ -235,7 +227,12 @@ export default function Navbar() {
                   {notifications.length > 0 && (
                     <div className="px-4 py-2.5 border-t border-gray-100">
                       <button
-                        onClick={() => { router.push('/notifications'); setNotifOpen(false) }}
+                        onClick={() => {
+                            const role = user?.role
+                            if (role === 'student' || role === 'personnel') router.push('/my-complaints')
+                            else router.push('/dashboard')
+                            setNotifOpen(false)
+                          }}
                         className="w-full text-center text-xs text-blue-600 hover:underline">
                         ดูทั้งหมด
                       </button>

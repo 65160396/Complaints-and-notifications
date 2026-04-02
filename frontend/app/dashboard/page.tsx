@@ -11,9 +11,7 @@ interface Complaint {
   priority: string
   category_id: number
   category_name: string
-  building: string
-  floor: string
-  room: string
+  department_name: string
   firstname: string
   lastname: string
   created_at: string
@@ -26,7 +24,7 @@ interface Complaint {
 interface Category { category_id: number; category_name: string }
 interface DeptUser  { user_id: number; firstname: string; lastname: string; role: string }
 
-const ALLOWED_ROLES = ['personnel', 'samo', 'officer', 'admin']
+const ALLOWED_ROLES = ['samo', 'officer', 'admin']
 
 const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
   pending:     { label: 'รอดำเนินการ',         color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: '⏳' },
@@ -205,8 +203,8 @@ function CategorySelector({ issueId, currentId, currentName, categories, onUpdat
   )
 }
 
-function PrioritySelector({ issueId, current, onUpdate }: {
-  issueId: number; current: string; onUpdate: (id: number, p: string) => void
+function PrioritySelector({ issueId, current, onUpdate, canEdit }: {
+  issueId: number; current: string; onUpdate: (id: number, p: string) => void; canEdit: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -220,6 +218,15 @@ function PrioritySelector({ issueId, current, onUpdate }: {
       onUpdate(issueId, priority)
     } catch { alert('เกิดข้อผิดพลาด') }
     finally { setLoading(false); setOpen(false) }
+  }
+
+  // read-only badge เมื่อไม่มีสิทธิ์แก้
+  if (!canEdit) {
+    return (
+      <span className={`text-xs px-2.5 py-1.5 rounded-lg font-medium border ${cfg.color}`}>
+        {cfg.icon} {cfg.label}
+      </span>
+    )
   }
 
   return (
@@ -268,14 +275,16 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
-    if (!ALLOWED_ROLES.includes(user.role)) { router.push('/complaints'); return }
+    if (user.role === 'student') { router.push('/my-complaints'); return }
+    if (user.role === 'personnel') { router.push('/complaints'); return }
+    if (!ALLOWED_ROLES.includes(user.role)) { router.push('/login'); return }
 
     const isSamo = user.role === 'samo'
     const endpoint = isSamo ? '/complaints/dept' : '/complaints'
 
     const requests = [
       api.get(endpoint),
-      api.get('/categories/all'),  // ✅ ดึงทุก role
+      api.get('/categories/all'),
       (isSamo || user.role === 'officer')
         ? api.get(`/departments/${user.department_id}/users`)
         : Promise.resolve({ data: [] }),
@@ -283,7 +292,6 @@ export default function DashboardPage() {
 
     Promise.all(requests)
       .then(([cRes, catRes, usersRes]) => {
-        console.log('deptUsers:', usersRes.data)  // ✅ เพิ่มตรงนี้
         setComplaints(cRes.data)
         setCategories(catRes.data)
         setDeptUsers(usersRes.data)
@@ -442,7 +450,7 @@ export default function DashboardPage() {
                       {c.description && <p className="text-sm text-gray-400 mt-1 line-clamp-1">{c.description}</p>}
                       <div className="flex gap-3 mt-2 text-xs text-gray-400 flex-wrap">
                         <span>👤 {c.firstname} {c.lastname}</span>
-                        <span>📍 {c.building} ชั้น {c.floor} ห้อง {c.room}</span>
+                        <span>🏫 {c.department_name || 'ไม่ระบุคณะ'}</span>
                         <span>🕐 {new Date(c.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                       </div>
                       {c.accepted_by && (
@@ -458,7 +466,8 @@ export default function DashboardPage() {
                         {sCfg.icon} {sCfg.label}
                       </span>
 
-                      <PrioritySelector issueId={c.issue_id} current={c.priority} onUpdate={handleUpdatePriority} />
+                      <PrioritySelector issueId={c.issue_id} current={c.priority} onUpdate={handleUpdatePriority}
+                        canEdit={['samo', 'officer', 'admin'].includes(user?.role || '')} />
 
                       {/* ปุ่มรับเรื่อง */}
                       {c.status === 'pending' && !c.accepted_by && (

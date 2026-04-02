@@ -1,27 +1,33 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import api from '../lib/api'
+import api, { getUser } from '../lib/api'
 
 export default function CreateComplaintPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const user = getUser()
+  const isStudent = user?.role === 'student'
+
   const [form, setForm] = useState({
     title: '',
     description: '',
     category_id: '',
-    location_id: '',
+    department_id: '',
     priority: 'medium',
   })
   const [categories, setCategories] = useState<any[]>([])
-  const [locations, setLocations] = useState<any[]>([])
+  const [departments, setDepartments] = useState<any[]>([])
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (!user) { router.push('/login'); return }
+    // samo/officer/admin ไม่มีสิทธิ์แจ้งเรื่อง → ไป dashboard
+    if (['samo', 'officer', 'admin'].includes(user.role)) { router.push('/dashboard'); return }
     api.get('/categories').then(res => setCategories(res.data))
-    api.get('/locations').then(res => setLocations(res.data))
+    api.get('/departments').then(res => setDepartments(res.data))
   }, [])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,8 +59,9 @@ export default function CreateComplaintPage() {
       formData.append('title', form.title)
       formData.append('description', form.description)
       formData.append('category_id', form.category_id)
-      formData.append('location_id', form.location_id)
-      formData.append('priority', form.priority)
+      formData.append('department_id', form.department_id)
+      // student: priority ถูกล็อคที่ backend แล้ว แต่ส่งค่า medium ไปด้วย
+      formData.append('priority', isStudent ? 'medium' : form.priority)
       images.forEach(img => formData.append('images', img))
 
       await api.post('/complaints', formData, {
@@ -115,37 +122,39 @@ export default function CreateComplaintPage() {
             </select>
           </div>
 
-          {/* สถานที่ */}
+          {/* คณะ */}
           <div>
-            <label className="text-sm text-gray-600 mb-1 block font-medium">สถานที่ *</label>
+            <label className="text-sm text-gray-600 mb-1 block font-medium">คณะ/หน่วยงาน *</label>
             <select
               required
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white"
-              value={form.location_id}
-              onChange={e => setForm({ ...form, location_id: e.target.value })}
+              value={form.department_id}
+              onChange={e => setForm({ ...form, department_id: e.target.value })}
             >
-              <option value="">เลือกสถานที่</option>
-              {locations.map(l => (
-                <option key={l.location_id} value={l.location_id}>
-                  {l.building} ชั้น {l.floor} ห้อง {l.room}
+              <option value="">เลือกคณะ/หน่วยงานที่เกิดปัญหา</option>
+              {departments.map(d => (
+                <option key={d.department_id} value={d.department_id}>
+                  {d.department_name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* ความเร่งด่วน */}
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block font-medium">ความเร่งด่วน</label>
-            <select
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white"
-              value={form.priority}
-              onChange={e => setForm({ ...form, priority: e.target.value })}
-            >
-              <option value="low">ต่ำ</option>
-              <option value="medium">ปานกลาง</option>
-              <option value="high">สูง</option>
-            </select>
-          </div>
+          {/* ความเร่งด่วน — เฉพาะ personnel/samo/officer/admin */}
+          {!isStudent && (
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block font-medium">ความเร่งด่วน</label>
+              <select
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white"
+                value={form.priority}
+                onChange={e => setForm({ ...form, priority: e.target.value })}
+              >
+                <option value="low">🟢 ต่ำ — ปัญหาทั่วไป ไม่เร่งด่วน</option>
+                <option value="medium">🟡 ปานกลาง — ควรแก้ไขภายใน 3-5 วัน</option>
+                <option value="high">🔴 สูง — เร่งด่วน ส่งผลกระทบวงกว้าง</option>
+              </select>
+            </div>
+          )}
 
 
           {/* US8/D9 — แนบรูปภาพ */}

@@ -10,9 +10,7 @@ interface Complaint {
   status: string
   priority: string
   category_name: string
-  building: string
-  floor: string
-  room: string
+  department_name: string
   created_at: string
   updated_at: string
   survey?: { rating: number; comment: string } | null
@@ -171,6 +169,8 @@ export default function MyComplaintsPage() {
   useEffect(() => {
     const user = getUser()
     if (!user) { router.push('/login'); return }
+    // samo/officer/admin ไม่ใช้หน้านี้ → ไป dashboard
+    if (['samo', 'officer', 'admin'].includes(user.role)) { router.push('/dashboard'); return }
 
     // ดึง complaints + survey ของแต่ละ resolved issue
     api.get('/complaints/my').then(async res => {
@@ -295,7 +295,7 @@ export default function MyComplaintsPage() {
                       </div>
                       <h2 className="font-semibold text-gray-800">{c.title}</h2>
                       {c.description && <p className="text-sm text-gray-400 mt-1 line-clamp-2">{c.description}</p>}
-                      <p className="text-xs text-gray-400 mt-2">📍 {c.building} ชั้น {c.floor} ห้อง {c.room}</p>
+                      <p className="text-xs text-gray-400 mt-2">🏫 {c.department_name || 'ไม่ระบุคณะ'}</p>
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0">

@@ -4,14 +4,36 @@ import { AuthRequest } from '../middleware/authMiddleware'
 import { createNotification } from './notificationController'
 
 export const getComplaints = async (req: AuthRequest, res: Response) => {
+  const role = req.user!.role
+  const userId = req.user!.id
+  const deptId = req.user!.department_id
+
+  // personnel: เห็นเฉพาะคำร้องของตัวเอง + คำร้องในคณะตัวเอง
+  if (role === 'personnel') {
+    const [rows] = await pool.execute(`
+      SELECT i.*, u.firstname, u.lastname, u.email,
+             c.category_name, d.department_name,
+             a.firstname as accepted_firstname, a.lastname as accepted_lastname
+      FROM issue_report i
+      JOIN app_user u ON i.user_id = u.user_id
+      JOIN category c ON i.category_id = c.category_id
+      LEFT JOIN department d ON i.department_id = d.department_id
+      LEFT JOIN app_user a ON i.accepted_by = a.user_id
+      WHERE (i.user_id = ? OR i.department_id = ?)
+      ORDER BY i.created_at DESC
+    `, [userId, deptId])
+    return res.json(rows)
+  }
+
+  // officer/admin: เห็นทุกคำร้อง
   const [rows] = await pool.execute(`
     SELECT i.*, u.firstname, u.lastname, u.email,
-           c.category_name, l.building, l.floor, l.room,
+           c.category_name, d.department_name,
            a.firstname as accepted_firstname, a.lastname as accepted_lastname
     FROM issue_report i
     JOIN app_user u ON i.user_id = u.user_id
     JOIN category c ON i.category_id = c.category_id
-    JOIN location l ON i.location_id = l.location_id
+    LEFT JOIN department d ON i.department_id = d.department_id
     LEFT JOIN app_user a ON i.accepted_by = a.user_id
     ORDER BY i.created_at DESC
   `)
@@ -22,16 +44,17 @@ export const getComplaintsByDept = async (req: AuthRequest, res: Response) => {
   const deptId = req.user!.department_id
   if (!deptId) return res.status(400).json({ message: 'ไม่พบข้อมูลคณะของคุณ' })
 
+  // samo: เห็นเฉพาะคำร้องที่ department_id ตรงกับคณะตัวเอง
   const [rows] = await pool.execute(`
     SELECT i.*, u.firstname, u.lastname, u.email,
-           c.category_name, l.building, l.floor, l.room,
+           c.category_name, d.department_name,
            a.firstname as accepted_firstname, a.lastname as accepted_lastname
     FROM issue_report i
     JOIN app_user u ON i.user_id = u.user_id
     JOIN category c ON i.category_id = c.category_id
-    JOIN location l ON i.location_id = l.location_id
+    LEFT JOIN department d ON i.department_id = d.department_id
     LEFT JOIN app_user a ON i.accepted_by = a.user_id
-    WHERE (u.department_id = ? OR u.department_id IS NULL)
+    WHERE i.department_id = ?
     ORDER BY i.created_at DESC
   `, [deptId])
   res.json(rows)
@@ -39,25 +62,29 @@ export const getComplaintsByDept = async (req: AuthRequest, res: Response) => {
 
 export const getMyComplaints = async (req: AuthRequest, res: Response) => {
   const [rows] = await pool.execute(`
-    SELECT i.*, c.category_name, l.building, l.floor, l.room
+    SELECT i.*, c.category_name, d.department_name
     FROM issue_report i
     JOIN category c ON i.category_id = c.category_id
-    JOIN location l ON i.location_id = l.location_id
+    LEFT JOIN department d ON i.department_id = d.department_id
     WHERE i.user_id = ?
     ORDER BY i.created_at DESC
   `, [req.user!.id])
   res.json(rows)
 }
 
-// US8/D9 — สร้างคำร้องพร้อมรูปภาพ + แจ้ง personnel/samo/officer
+// US8/D9 — สร้างคำร้องพร้อมรูปภาพ + แจ้ง samo/officer/admin
 export const createComplaint = async (req: AuthRequest, res: Response) => {
-  const { title, description, category_id, location_id, priority } = req.body
+  const { title, description, category_id, department_id, priority } = req.body
   const files = req.files as Express.Multer.File[]
+  const role = req.user!.role
+
+  // student: บังคับ priority = medium เสมอ
+  const finalPriority = role === 'student' ? 'medium' : (priority || 'medium')
 
   const [result]: any = await pool.execute(
-    `INSERT INTO issue_report (user_id, title, description, category_id, location_id, priority, status)
+    `INSERT INTO issue_report (user_id, title, description, category_id, department_id, priority, status)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [req.user!.id, title, description, category_id, location_id, priority || 'medium', 'pending']
+    [req.user!.id, title, description, category_id, department_id || null, finalPriority, 'pending']
   )
   const issueId = result.insertId
 
@@ -67,12 +94,12 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
     }
   }
 
-  const reporterDeptId = req.user!.department_id
-  let staffQuery = `SELECT user_id FROM app_user WHERE role IN ('samo', 'officer', 'admin')`
+  // แจ้ง samo ของคณะนั้น + officer + admin
+  let staffQuery = `SELECT user_id FROM app_user WHERE role IN ('officer', 'admin')`
   const staffParams: any[] = []
-  if (reporterDeptId) {
-    staffQuery = `SELECT user_id FROM app_user WHERE role IN ('samo', 'officer', 'admin') AND (department_id = ? OR role IN ('officer', 'admin'))`
-    staffParams.push(reporterDeptId)
+  if (department_id) {
+    staffQuery = `SELECT user_id FROM app_user WHERE (role = 'samo' AND department_id = ?) OR role IN ('officer', 'admin')`
+    staffParams.push(department_id)
   }
 
   const [staffRows]: any = await pool.execute(staffQuery, staffParams)
@@ -259,9 +286,10 @@ export const forwardComplaint = async (req: AuthRequest, res: Response) => {
 export const updatePriority = async (req: AuthRequest, res: Response) => {
   const { id } = req.params
   const { priority } = req.body
+  const role = req.user!.role
 
-  if (!['personnel', 'samo', 'officer', 'admin'].includes(req.user!.role)) {
-    return res.status(403).json({ message: 'ไม่มีสิทธิ์' })
+  if (!['samo', 'officer', 'admin'].includes(role)) {
+    return res.status(403).json({ message: 'ไม่มีสิทธิ์แก้ไขความเร่งด่วน' })
   }
 
   const validPriorities = ['low', 'medium', 'high']
