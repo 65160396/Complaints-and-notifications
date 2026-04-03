@@ -23,6 +23,7 @@ interface Complaint {
 
 interface Category { category_id: number; category_name: string }
 interface DeptUser  { user_id: number; firstname: string; lastname: string; role: string }
+interface WorkTeam  { team_id: number; team_name: string; description: string | null }
 
 const ALLOWED_ROLES = ['samo', 'officer', 'admin']
 
@@ -40,23 +41,23 @@ const priorityConfig: Record<string, { label: string; color: string; icon: strin
   high:   { label: 'สูง',      color: 'bg-red-100 text-red-700',      icon: '🔴' },
 }
 
-// Modal มอบหมายงาน — US7
-function AssignModal({ issue, deptUsers, onClose, onAssigned }: {
+// Modal มอบหมายงานให้หน่วยงาน — US7
+function AssignModal({ issue, teams, onClose, onAssigned }: {
   issue: Complaint
-  deptUsers: DeptUser[]
+  teams: WorkTeam[]
   onClose: () => void
-  onAssigned: (issueId: number, name: string) => void
+  onAssigned: (issueId: number, teamName: string) => void
 }) {
-  const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedTeamId, setSelectedTeamId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleSubmit = async () => {
-    if (!selectedUserId) { setError('กรุณาเลือกผู้รับผิดชอบ'); return }
+    if (!selectedTeamId) { setError('กรุณาเลือกหน่วยงาน'); return }
     setLoading(true)
     try {
-      const res = await api.patch(`/complaints/${issue.issue_id}/assign`, { assigned_to: selectedUserId })
-      onAssigned(issue.issue_id, res.data.assigned_to)
+      const res = await api.patch(`/complaints/${issue.issue_id}/assign`, { team_id: selectedTeamId })
+      onAssigned(issue.issue_id, res.data.team_name)
       onClose()
     } catch (err: any) {
       setError(err?.response?.data?.message || 'เกิดข้อผิดพลาด')
@@ -68,26 +69,29 @@ function AssignModal({ issue, deptUsers, onClose, onAssigned }: {
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
-        <h2 className="font-bold text-gray-800 text-lg mb-1">มอบหมายงาน</h2>
+        <h2 className="font-bold text-gray-800 text-lg mb-1">มอบหมายให้หน่วยงาน</h2>
         <p className="text-sm text-gray-400 mb-5">คำร้อง: {issue.title}</p>
 
-        <label className="text-xs text-gray-500 mb-1 block">เลือกผู้รับผิดชอบ *</label>
+        <label className="text-xs text-gray-500 mb-1 block">เลือกหน่วยงานที่รับผิดชอบ *</label>
         <select
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
-          value={selectedUserId}
-          onChange={e => setSelectedUserId(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-1 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
+          value={selectedTeamId}
+          onChange={e => setSelectedTeamId(e.target.value)}
         >
-          <option value="">เลือกบุคคล</option>
-          {deptUsers.map(u => (
-            <option key={u.user_id} value={u.user_id}>
-              {u.firstname} {u.lastname} ({u.role})
-            </option>
+          <option value="">เลือกหน่วยงาน</option>
+          {teams.map(t => (
+            <option key={t.team_id} value={t.team_id}>{t.team_name}</option>
           ))}
         </select>
+        {selectedTeamId && (
+          <p className="text-xs text-gray-400 mb-3">
+            {teams.find(t => String(t.team_id) === selectedTeamId)?.description}
+          </p>
+        )}
 
         {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-3">
           <button onClick={onClose}
             className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50">
             ยกเลิก
@@ -252,22 +256,86 @@ function PrioritySelector({ issueId, current, onUpdate, canEdit }: {
   )
 }
 
-const filterTabs = [
-  { key: 'all',         label: 'ทั้งหมด' },
-  { key: 'pending',     label: '⏳ รอดำเนินการ' },
-  { key: 'in_progress', label: '🔧 กำลังดำเนินการ' },
-  { key: 'resolved',    label: '✅ แก้ไขแล้ว' },
-  { key: 'forwarded',   label: '📤 ส่งต่อแล้ว' },
-]
+
+// ดูรูปภาพประกอบในคำร้อง
+function ImageViewer({ issueId }: { issueId: number }) {
+  const [images, setImages] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
+  const BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'
+
+  const handleOpen = async () => {
+    if (images.length > 0) { setOpen(!open); return }
+    setLoading(true)
+    try {
+      const res = await api.get(`/complaints/${issueId}/images`)
+      setImages(res.data.map((img: any) => `${BASE}/${img.image_path.replace(/\\/g, '/')}` ))
+      setOpen(true)
+    } catch { setImages([]) }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div>
+      <button onClick={handleOpen}
+        className="text-xs px-3 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors mt-2">
+        {loading ? 'โหลด...' : open ? '🖼️ ซ่อน' : '🖼️ ดูรูป'}
+      </button>
+      {open && images.length === 0 && !loading && (
+        <span className="text-xs text-gray-400 ml-2">ไม่มีรูปภาพ</span>
+      )}
+      {open && images.length > 0 && (
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {images.map((src, i) => (
+            <img key={i} src={src} alt={`รูป ${i + 1}`}
+              onClick={() => setLightbox(src)}
+              className="w-16 h-16 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80" />
+          ))}
+        </div>
+      )}
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="รูปขยาย" className="max-w-full max-h-[85vh] rounded-xl object-contain" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+const filterTabsByRole: Record<string, { key: string; label: string }[]> = {
+  samo: [
+    { key: 'all',         label: 'ทั้งหมด' },
+    { key: 'pending',     label: '⏳ รอดำเนินการ' },
+    { key: 'in_progress', label: '🔧 กำลังดำเนินการ' },
+    { key: 'resolved',    label: '✅ แก้ไขแล้ว' },
+    { key: 'forwarded',   label: '📤 ส่งต่อแล้ว' },
+  ],
+  officer: [
+    { key: 'all',         label: 'ทั้งหมด' },
+    { key: 'forwarded',   label: '📤 รอมอบหมาย' },
+    { key: 'in_progress', label: '🔧 กำลังดำเนินการ' },
+    { key: 'resolved',    label: '✅ แก้ไขแล้ว' },
+  ],
+  admin: [
+    { key: 'all',         label: 'ทั้งหมด' },
+    { key: 'pending',     label: '⏳ รอดำเนินการ' },
+    { key: 'in_progress', label: '🔧 กำลังดำเนินการ' },
+    { key: 'resolved',    label: '✅ แก้ไขแล้ว' },
+    { key: 'forwarded',   label: '📤 ส่งต่อแล้ว' },
+  ],
+}
 
 export default function DashboardPage() {
   const router = useRouter()
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [deptUsers, setDeptUsers] = useState<DeptUser[]>([])
+  const [teams, setTeams] = useState<WorkTeam[]>([])
   const [loading, setLoading] = useState(true)
   const user = getUser()
-  const [filterStatus, setFilterStatus] = useState(user?.role === 'officer' ? 'forwarded' : 'all')
+  const [filterStatus, setFilterStatus] = useState('all')
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [acceptingId, setAcceptingId] = useState<number | null>(null)
   const [assignModal, setAssignModal] = useState<Complaint | null>(null)
@@ -282,19 +350,21 @@ export default function DashboardPage() {
     const isSamo = user.role === 'samo'
     const endpoint = isSamo ? '/complaints/dept' : '/complaints'
 
-    const requests = [
+    const requests: Promise<any>[] = [
       api.get(endpoint),
       api.get('/categories/all'),
       isSamo
         ? api.get(`/departments/${user.department_id}/users`)
-        : api.get('/users/staff'),  // ✅ Officer ดึง staff ทั้งหมด
+        : Promise.resolve({ data: [] }),
+      api.get('/teams'),  // โหลดหน่วยงานสำหรับ assign
     ]
 
     Promise.all(requests)
-      .then(([cRes, catRes, usersRes]) => {
+      .then(([cRes, catRes, usersRes, teamsRes]) => {
         setComplaints(cRes.data)
         setCategories(catRes.data)
         setDeptUsers(usersRes.data)
+        setTeams(teamsRes.data)
       })
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false))
@@ -360,7 +430,7 @@ export default function DashboardPage() {
       {assignModal && (
         <AssignModal
           issue={assignModal}
-          deptUsers={deptUsers}
+          teams={teams}
           onClose={() => setAssignModal(null)}
           onAssigned={handleAssigned}
         />
@@ -378,7 +448,9 @@ export default function DashboardPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Dashboard ภาพรวม</h1>
           <p className="text-gray-400 text-sm mt-1">
-            สวัสดี {user?.firstname}{isSamo && ' — แสดงคำร้องภายในคณะของคุณ'}
+            สวัสดี {user?.firstname}
+            {isSamo && ' — แสดงคำร้องภายในคณะของคุณ'}
+            {user?.role === 'officer' && ' — แสดงเฉพาะคำร้องที่ส่งต่อมาจากสโมสรคณะ'}
           </p>
         </div>
 
@@ -409,7 +481,7 @@ export default function DashboardPage() {
 
         {/* Filter */}
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
-          {filterTabs.map(f => (
+          {(filterTabsByRole[user?.role || ''] || filterTabsByRole.admin).map(f => (
             <button key={f.key} onClick={() => setFilterStatus(f.key)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all border
                 ${filterStatus === f.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
@@ -459,6 +531,7 @@ export default function DashboardPage() {
                       {c.status === 'forwarded' && c.forwarded_note && (
                         <p className="text-xs text-purple-500 mt-1">📤 ส่งต่อ: {c.forwarded_note}</p>
                       )}
+                      <ImageViewer issueId={c.issue_id} />
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0">
@@ -477,16 +550,7 @@ export default function DashboardPage() {
                         </button>
                       )}
 
-                      {/* Officer รับเรื่องจาก forwarded */}
-                      {c.status === 'forwarded' && user?.role === 'officer' && (
-                      <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
-                        className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
-                        {isUpdating ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จ'}
-                      </button>
-                    )}
-
-                      {/* US7 — มอบหมายงาน */}
-                      {/* Samo — มอบหมายเฉพาะ in_progress */}
+                      {/* Samo — มอบหมายงาน (in_progress) */}
                       {isSamo && c.status === 'in_progress' && (
                         <button onClick={() => setAssignModal(c)}
                           className="text-xs px-3 py-1.5 rounded-xl font-medium bg-orange-500 hover:bg-orange-600 text-white">
@@ -494,7 +558,23 @@ export default function DashboardPage() {
                         </button>
                       )}
 
-                      {/* Officer — มอบหมายเฉพาะ forwarded */}
+                      {/* Samo — ส่งต่อ Officer */}
+                      {isSamo && ['pending', 'in_progress'].includes(c.status) && (
+                        <button onClick={() => setForwardModal(c)}
+                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-purple-600 hover:bg-purple-700 text-white">
+                          📤 ส่งต่อ
+                        </button>
+                      )}
+
+                      {/* Samo — แก้ไขเสร็จ */}
+                      {isSamo && c.status === 'in_progress' && (
+                        <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
+                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
+                          {isUpdating ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จ'}
+                        </button>
+                      )}
+
+                      {/* Officer — มอบหมายให้หน่วยงาน (forwarded เท่านั้น) */}
                       {user?.role === 'officer' && c.status === 'forwarded' && (
                         <button onClick={() => setAssignModal(c)}
                           className="text-xs px-3 py-1.5 rounded-xl font-medium bg-orange-500 hover:bg-orange-600 text-white">
@@ -502,24 +582,8 @@ export default function DashboardPage() {
                         </button>
                       )}
 
-
-                      {/* US8 — ส่งต่อ Officer */}
-                      {isSamo && ['pending', 'in_progress'].includes(c.status) && (
-                      <button onClick={() => setForwardModal(c)}
-                        className="text-xs px-3 py-1.5 rounded-xl font-medium bg-purple-600 hover:bg-purple-700 text-white">
-                        📤 ส่งต่อ
-                      </button>
-                    )}
-
-                      {isSamo && c.status === 'in_progress' && c.accepted_by === user?.id && !c.accepted_firstname && (
-                        <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
-                          className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
-                          {isUpdating ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จ'}
-                        </button>
-                      )}
-
-                      {/* ปุ่มแก้ไขเสร็จ */}
-                      {isSamo && c.status === 'in_progress' && (
+                      {/* Officer — แก้ไขเสร็จ (forwarded หรือ in_progress ที่รับมาแล้ว) */}
+                      {user?.role === 'officer' && ['forwarded', 'in_progress'].includes(c.status) && (
                         <button onClick={() => handleUpdateStatus(c.issue_id, 'resolved')} disabled={isUpdating}
                           className="text-xs px-3 py-1.5 rounded-xl font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">
                           {isUpdating ? 'กำลังบันทึก...' : '✅ แก้ไขเสร็จ'}

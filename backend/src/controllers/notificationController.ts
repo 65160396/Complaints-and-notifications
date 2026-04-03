@@ -77,3 +77,30 @@ export const createNotification = async (
     [userId, issueId || null, message, channel, type]
   )
 }
+// Admin — broadcast แจ้งเตือนฉุกเฉินไปยังกลุ่มผู้ใช้
+export const broadcastNotification = async (req: AuthRequest, res: Response) => {
+  if (req.user!.role !== 'admin') return res.status(403).json({ message: 'ไม่มีสิทธิ์' })
+  const { message, target_roles } = req.body
+  if (!message || !message.trim()) return res.status(400).json({ message: 'กรุณาระบุข้อความ' })
+
+  // target_roles: ['all'] หรือ ['student','personnel','samo','officer','admin']
+  let userQuery = 'SELECT user_id FROM app_user WHERE is_active = 1'
+  const params: any[] = []
+  if (target_roles && target_roles.length > 0 && !target_roles.includes('all')) {
+    const placeholders = target_roles.map(() => '?').join(',')
+    userQuery += ` AND role IN (${placeholders})`
+    params.push(...target_roles)
+  }
+
+  const [users]: any = await pool.execute(userQuery, params)
+  let sent = 0
+  for (const u of users) {
+    await pool.execute(
+      `INSERT INTO notification (user_id, issue_id, message, channel, is_read, type)
+       VALUES (?, NULL, ?, 'in_app', 0, 'status_change')`,
+      [u.user_id, message.trim()]
+    )
+    sent++
+  }
+  res.json({ message: `ส่งแจ้งเตือนสำเร็จ ${sent} คน` })
+}

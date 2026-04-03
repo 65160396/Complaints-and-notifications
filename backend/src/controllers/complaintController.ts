@@ -27,7 +27,27 @@ export const getComplaints = async (req: AuthRequest, res: Response) => {
   return res.json(rows)
 }
 
-  // officer/admin: เห็นทุกคำร้อง
+  // officer: เห็นเฉพาะคำร้องที่ถูก forward มาเท่านั้น
+  if (role === 'officer') {
+    const [rows] = await pool.execute(`
+      SELECT i.*, u.firstname, u.lastname, u.email,
+             c.category_name, d.department_name,
+             a.firstname as accepted_firstname, a.lastname as accepted_lastname
+      FROM issue_report i
+      JOIN app_user u ON i.user_id = u.user_id
+      JOIN category c ON i.category_id = c.category_id
+      LEFT JOIN department d ON i.department_id = d.department_id
+      LEFT JOIN app_user a ON i.accepted_by = a.user_id
+      WHERE i.status = 'forwarded'
+         OR (i.status IN ('in_progress', 'resolved') AND i.accepted_by IN (
+               SELECT user_id FROM app_user WHERE role = 'officer'
+            ))
+      ORDER BY i.created_at DESC
+    `)
+    return res.json(rows)
+  }
+
+  // admin: เห็นทุกคำร้อง
   const [rows] = await pool.execute(`
     SELECT i.*, u.firstname, u.lastname, u.email,
            c.category_name, d.department_name,
@@ -96,11 +116,11 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
     }
   }
 
-  // แจ้ง samo ของคณะนั้น + officer + admin
-  let staffQuery = `SELECT user_id FROM app_user WHERE role IN ('officer', 'admin')`
+  // แจ้ง samo ของคณะนั้น + admin เท่านั้น (officer รับแจ้งเฉพาะตอน forward)
+  let staffQuery = `SELECT user_id FROM app_user WHERE role = 'admin'`
   const staffParams: any[] = []
   if (department_id) {
-    staffQuery = `SELECT user_id FROM app_user WHERE (role = 'samo' AND department_id = ?) OR role IN ('officer', 'admin')`
+    staffQuery = `SELECT user_id FROM app_user WHERE (role = 'samo' AND department_id = ?) OR role = 'admin'`
     staffParams.push(department_id)
   }
 
@@ -154,8 +174,14 @@ export const acceptComplaint = async (req: AuthRequest, res: Response) => {
   const complaint = rows[0]
 
   if (!complaint) return res.status(404).json({ message: 'ไม่พบคำร้องนี้' })
-  if (complaint.accepted_by) return res.status(400).json({ message: 'คำร้องนี้มีผู้รับเรื่องไปแล้ว' })
-  if (complaint.status !== 'pending') return res.status(400).json({ message: 'รับได้เฉพาะคำร้องที่รอดำเนินการ' })
+  // officer รับเฉพาะ forwarded, samo รับเฉพาะ pending
+  const allowedStatus = req.user!.role === 'officer' ? 'forwarded' : 'pending'
+  if (complaint.status !== allowedStatus) {
+    return res.status(400).json({ message: req.user!.role === 'officer'
+      ? 'Officer รับได้เฉพาะคำร้องที่ถูกส่งต่อมาเท่านั้น'
+      : 'รับได้เฉพาะคำร้องที่รอดำเนินการ'
+    })
+  }
 
   await pool.execute(
     'UPDATE issue_report SET accepted_by = ?, status = ? WHERE issue_id = ?',
@@ -192,48 +218,48 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
   res.json({ message: 'แก้ไขหมวดหมู่เรียบร้อยแล้ว', new_category: catRows[0].category_name })
 }
 
-// US7 — มอบหมายงานภายในคณะ
+// US7 — มอบหมายงานให้หน่วยงานเฉพาะทาง
 export const assignComplaint = async (req: AuthRequest, res: Response) => {
   const { id } = req.params
-  const { assigned_to } = req.body
+  const { team_id } = req.body
   const assignedBy = req.user!.id
 
   if (!['samo', 'officer', 'admin'].includes(req.user!.role)) {
     return res.status(403).json({ message: 'ไม่มีสิทธิ์มอบหมายงาน' })
   }
-  if (!assigned_to) return res.status(400).json({ message: 'กรุณาระบุผู้รับผิดชอบ' })
+  if (!team_id) return res.status(400).json({ message: 'กรุณาระบุหน่วยงานที่รับผิดชอบ' })
 
-  // ตรวจสอบว่า user ที่จะมอบหมายให้มีอยู่จริง
-  const [userRows]: any = await pool.execute(
-    'SELECT user_id, firstname, lastname FROM app_user WHERE user_id = ?',
-    [assigned_to]
+  const [teamRows]: any = await pool.execute(
+    'SELECT team_id, team_name FROM work_team WHERE team_id = ?', [team_id]
   )
-  if (!userRows[0]) return res.status(404).json({ message: 'ไม่พบผู้ใช้นี้' })
+  if (!teamRows[0]) return res.status(404).json({ message: 'ไม่พบหน่วยงานนี้' })
 
   const [issueRows]: any = await pool.execute('SELECT * FROM issue_report WHERE issue_id = ?', [id])
   const issue = issueRows[0]
   if (!issue) return res.status(404).json({ message: 'ไม่พบคำร้องนี้' })
 
-  // บันทึกลงตาราง assignment
+  const teamName = teamRows[0].team_name
+
   await pool.execute(
-    `INSERT INTO assignment (issue_id, department_id, assigned_by, assigned_to)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE assigned_to = ?, assigned_by = ?, assigned_at = current_timestamp()`,
-    [id, req.user!.department_id || 0, assignedBy, assigned_to, assigned_to, assignedBy]
+    `INSERT INTO assignment (issue_id, department_id, assigned_by, assigned_to, team_id, team_name)
+     VALUES (?, ?, ?, NULL, ?, ?)
+     ON DUPLICATE KEY UPDATE team_id = ?, team_name = ?, assigned_to = NULL, assigned_by = ?, assigned_at = current_timestamp()`,
+    [id, req.user!.department_id || null, assignedBy, team_id, teamName, team_id, teamName, assignedBy]
   )
 
-  // แจ้งเตือนคนที่ถูกมอบหมายงาน
-  const assignee = userRows[0]
+  // อัปเดตสถานะเป็น in_progress ถ้ายังเป็น forwarded
+  if (issue.status === 'forwarded') {
+    await pool.execute('UPDATE issue_report SET status = ? WHERE issue_id = ?', ['in_progress', id])
+  }
+
+  // แจ้งเจ้าของคำร้องว่างานถูกมอบหมายแล้ว
   await createNotification(
-    assigned_to,
-    `คุณได้รับมอบหมายให้ดูแลคำร้อง: "${issue.title}"`,
-    Number(id), 'in_app', 'new_complaint'
+    issue.user_id,
+    `คำร้อง "${issue.title}" ถูกมอบหมายให้ ${teamName} ดูแลแล้ว`,
+    Number(id), 'in_app', 'status_change'
   )
 
-  res.json({
-    message: 'มอบหมายงานเรียบร้อยแล้ว',
-    assigned_to: `${assignee.firstname} ${assignee.lastname}`
-  })
+  res.json({ message: 'มอบหมายงานเรียบร้อยแล้ว', team_name: teamName })
 }
 
 // US8 — ส่งต่อเจ้าหน้าที่มหาวิทยาลัย

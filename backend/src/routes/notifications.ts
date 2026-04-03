@@ -4,6 +4,7 @@ import {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  broadcastNotification,
 } from '../controllers/notificationController'
 import { protect } from '../middleware/authMiddleware'
 
@@ -13,5 +14,6 @@ router.get('/', protect, getNotifications)
 router.get('/unread-count', protect, getUnreadCount)
 router.patch('/:id/read', protect, markAsRead)
 router.patch('/read-all', protect, markAllAsRead)
+router.post('/broadcast', protect, broadcastNotification)
 
 export default router

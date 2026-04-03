@@ -13,6 +13,7 @@ import surveyRoutes from './routes/survey'
 import departmentRoutes from './routes/departments'
 import pool from './db'
 import userRoutes from './routes/users'
+import teamRoutes from './routes/teams'
 
 dotenv.config()
 const app = express()
@@ -38,6 +39,7 @@ app.use('/api/profile', profileRoutes)
 app.use('/api/survey', surveyRoutes)
 app.use('/api/departments', departmentRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/teams', teamRoutes)
 
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log(`Server running on :${PORT}`))
