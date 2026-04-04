@@ -48,9 +48,9 @@ const menuByRole = {
     { name: 'ผู้ใช้', href: '/admin/users', icon: '👥' },
     { name: 'Master Data', href: '/admin/master-data', icon: '🗂️' },
     { name: 'คำร้องทั้งหมด', href: '/admin/complaints', icon: '📋' },
-    { name: 'Audit Log', href: '/admin/audit-log', icon: '🧾' },
-    { name: 'System Log', href: '/admin/system-log', icon: '💻' },
-    { name: 'แจ้งเตือนฉุกเฉิน', href: '/admin/emergency', icon: '🚨' },
+    { name: 'Audit Log', href: '/admin/audit-logs', icon: '🧾' },
+    { name: 'System Log', href: '/admin/system-logs', icon: '💻' },
+    { name: 'แจ้งเตือนฉุกเฉิน', href: '/admin/broadcast', icon: '🚨' },
   ],
 } as const
 
