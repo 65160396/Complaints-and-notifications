@@ -10,9 +10,7 @@ interface Complaint {
   status: string
   priority: string
   category_name: string
-  building: string
-  floor: string
-  room: string
+  department_name: string
   created_at: string
   updated_at: string
   survey?: { rating: number; comment: string } | null
@@ -160,6 +158,54 @@ const filterTabs = [
   { key: 'cancelled',   label: '❌ ยกเลิกแล้ว' },
 ]
 
+
+// ดูรูปภาพประกอบ
+function ImageViewer({ issueId }: { issueId: number }) {
+  const [images, setImages] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
+  const BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'
+
+  const handleOpen = async () => {
+    if (images.length > 0) { setOpen(!open); return }
+    setLoading(true)
+    try {
+      const res = await api.get(`/complaints/${issueId}/images`)
+      setImages(res.data.map((img: any) => `${BASE}/${img.image_path.replace(/\\/g, '/')}` ))
+      setOpen(true)
+    } catch { setImages([]) }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div>
+      <button onClick={handleOpen}
+        className="text-xs px-3 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors mt-2">
+        {loading ? 'กำลังโหลด...' : open ? '🖼️ ซ่อนรูปภาพ' : '🖼️ ดูรูปภาพ'}
+      </button>
+      {open && images.length === 0 && !loading && (
+        <p className="text-xs text-gray-400 mt-2">ไม่มีรูปภาพแนบ</p>
+      )}
+      {open && images.length > 0 && (
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {images.map((src, i) => (
+            <img key={i} src={src} alt={`รูป ${i + 1}`}
+              onClick={() => setLightbox(src)}
+              className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" />
+          ))}
+        </div>
+      )}
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="รูปขยาย" className="max-w-full max-h-[85vh] rounded-xl object-contain" />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MyComplaintsPage() {
   const router = useRouter()
   const [complaints, setComplaints] = useState<Complaint[]>([])
@@ -171,6 +217,8 @@ export default function MyComplaintsPage() {
   useEffect(() => {
     const user = getUser()
     if (!user) { router.push('/login'); return }
+    // samo/officer/admin ไม่ใช้หน้านี้ → ไป dashboard
+    if (['samo', 'officer', 'admin'].includes(user.role)) { router.push('/dashboard'); return }
 
     // ดึง complaints + survey ของแต่ละ resolved issue
     api.get('/complaints/my').then(async res => {
@@ -295,7 +343,8 @@ export default function MyComplaintsPage() {
                       </div>
                       <h2 className="font-semibold text-gray-800">{c.title}</h2>
                       {c.description && <p className="text-sm text-gray-400 mt-1 line-clamp-2">{c.description}</p>}
-                      <p className="text-xs text-gray-400 mt-2">📍 {c.building} ชั้น {c.floor} ห้อง {c.room}</p>
+                      <p className="text-xs text-gray-400 mt-2">🏫 {c.department_name || 'ไม่ระบุคณะ'}</p>
+                      <ImageViewer issueId={c.issue_id} />
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0">

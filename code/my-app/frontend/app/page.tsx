@@ -8,10 +8,16 @@ export default function Home() {
 
   useEffect(() => {
     const user = getUser()
-    if (user) {
-      router.replace('/complaints')
-    } else {
+    if (!user) {
       router.replace('/login')
+      return
+    }
+    // samo / officer / admin → dashboard
+    if (['samo', 'officer', 'admin'].includes(user.role)) {
+      router.replace('/dashboard')
+    } else {
+      // student / personnel → complaints
+      router.replace('/complaints')
     }
   }, [router])
 
