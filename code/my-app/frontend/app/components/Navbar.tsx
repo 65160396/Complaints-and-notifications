@@ -124,7 +124,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="w-full px-6 h-14 flex items-center justify-between">
+      <div className="w-full px-6 h-14 flex items-center justify-between relative">
 
         {/* Logo */}
         <button onClick={() => {
@@ -134,7 +134,7 @@ export default function Navbar() {
             else if (role === 'samo' || role === 'officer') router.push('/dashboard')
             else router.push('/login')
           }}
-          className="font-bold text-blue-600 text-lg tracking-tight">
+          className="font-bold text-blue-600 text-2xl tracking-tight ml-22">
           IMS
         </button>
 
