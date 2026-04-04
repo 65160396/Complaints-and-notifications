@@ -135,7 +135,7 @@ export default function Navbar() {
             else router.push('/login')
           }}
           className="font-bold text-blue-600 text-2xl tracking-tight ml-22">
-          IMS
+          IMS 
         </button>
 
         {/* Nav links */}
