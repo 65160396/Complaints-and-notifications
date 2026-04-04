@@ -1,0 +1,97 @@
+# ---------------------------------------------------------
+# General & OS (ไฟล์ระบบปฏิบัติการที่ไม่ควรขึ้น Git)
+# ---------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ---------------------------------------------------------
+# IDE & Editors (ไฟล์ตั้งค่าของโปรแกรมเขียนโค้ด)
+# ---------------------------------------------------------
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ---------------------------------------------------------
+# Security & Environment Variables (สำคัญมากตาม SRS ข้อ 2.5 c)
+# ห้ามอัปโหลดไฟล์ที่มี Key หรือ Password เด็ดขาด
+# ---------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# ---------------------------------------------------------
+# Logs (ไฟล์บันทึกการทำงาน)
+# ---------------------------------------------------------
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------
+# Node.js / React (Frontend & Backend) [cite: 85]
+# ---------------------------------------------------------
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.nuxt/
+
+# ---------------------------------------------------------
+# Python (Backend Option) [cite: 85]
+# ---------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# ---------------------------------------------------------
+# Flutter (Mobile Frontend Option) [cite: 85]
+# ---------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android specific (for Flutter)
+**/android/app/google-services.json
+**/android/key.properties
+**/android/local.properties
+
+# iOS specific (for Flutter)
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Runner/GoogleService-Info.plist
+
+# ---------------------------------------------------------
+# Media & Uploads (จัดการไฟล์แนบรูปภาพ) [cite: 13, 116]
+# เก็บโฟลเดอร์ไว้แต่ไม่เอาไฟล์ข้างใน (ใช้ .gitkeep)
+# ---------------------------------------------------------
+uploads/*
+!uploads/.gitkeep
+storage/*
+!storage/.gitkeep
+tmp/
