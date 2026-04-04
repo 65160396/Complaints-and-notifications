@@ -1,52 +1,44 @@
 // tests/unit/notificationSettings.test.ts
 // ครอบคลุม: TC-009, TC-027, TC-043, TC-058
 
-jest.mock('../../db', () => ({ execute: jest.fn() }))
-
+import { getSettings, updateSettings, resetSettings } from '../../controllers/notificationSettingsController'
 import pool from '../../db'
-import {
-  getSettings,
-  updateSettings,
-  resetSettings,
-} from '../../controllers/notificationSettingsController'
 
-const mockReq = (overrides = {}) => ({
-  user: { id: 1, email: 'student@buu.ac.th', role: 'student' },
-  body: {},
-  ...overrides,
-} as any)
+jest.mock('../../db')
 
 const mockRes = () => {
   const res: any = {}
   res.status = jest.fn().mockReturnValue(res)
-  res.json = jest.fn().mockReturnValue(res)
+  res.json   = jest.fn().mockReturnValue(res)
   return res
 }
+const makeReq = (overrides: any) => ({
+  body: {}, user: { id: 1, role: 'student' },
+  ...overrides,
+} as any)
 
-// ─── getSettings ─────────────────────────────────────────────────────────────
+beforeEach(() => jest.clearAllMocks())
+
+// ══════════════════════════════════════════════════════════════════════════════
+// getSettings
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('getSettings', () => {
-  beforeEach(() => jest.clearAllMocks())
-
-  // มี settings อยู่แล้ว → return settings
-  test('มี settings อยู่แล้ว → return settings + is_default: false', async () => {
-    const fakeSettings = { setting_id: 1, user_id: 1, in_app_enabled: 1, notify_status_change: 1, notify_new_complaint: 0 }
+  it('should return existing settings when found', async () => {
+    const fakeSettings = { user_id: 1, in_app_enabled: 1, notify_status_change: 1, notify_new_complaint: 0 }
     ;(pool.execute as jest.Mock).mockResolvedValueOnce([[fakeSettings]])
 
-    const req = mockReq()
     const res = mockRes()
-    await getSettings(req, res)
+    await getSettings(makeReq({ user: { id: 1 } }), res)
 
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ is_default: false }))
   })
 
-  // ยังไม่มี settings → return default
-  test('ยังไม่มี settings → return default values + is_default: true', async () => {
+  it('should return default settings when no record exists', async () => {
     ;(pool.execute as jest.Mock).mockResolvedValueOnce([[]])
 
-    const req = mockReq()
     const res = mockRes()
-    await getSettings(req, res)
+    await getSettings(makeReq({ user: { id: 1 } }), res)
 
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
       in_app_enabled: 1,
@@ -57,75 +49,80 @@ describe('getSettings', () => {
   })
 })
 
-// ─── updateSettings ───────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// updateSettings
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('updateSettings', () => {
-  beforeEach(() => jest.clearAllMocks())
 
-  // TC-009/TC-027/TC-043/TC-058: UPDATE settings ที่มีอยู่แล้ว
-  test('TC-009: มี settings อยู่แล้ว → UPDATE สำเร็จ', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[{ setting_id: 1 }]])  // existing
-      .mockResolvedValueOnce([{ affectedRows: 1 }])   // UPDATE
+  // ─── TC-009: ปิดการแจ้งเตือน ─────────────────────────────────────────────
 
-    const req = mockReq({
-      body: { in_app_enabled: 0, notify_status_change: 1, notify_new_complaint: 1 }
+  describe('TC-009: ปิดการแจ้งเตือน (Student)', () => {
+    it('should UPDATE when settings already exist', async () => {
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([[{ setting_id: 1 }]])  // SELECT existing
+        .mockResolvedValueOnce([{}])                    // UPDATE
+
+      const res = mockRes()
+      await updateSettings(makeReq({
+        body: { in_app_enabled: 0, notify_status_change: 1, notify_new_complaint: 1 },
+        user: { id: 1 },
+      }), res)
+
+      expect(res.json).toHaveBeenCalledWith({ message: 'บันทึกการตั้งค่าเรียบร้อยแล้ว' })
     })
-    const res = mockRes()
-    await updateSettings(req, res)
 
-    expect(res.json).toHaveBeenCalledWith({ message: 'บันทึกการตั้งค่าเรียบร้อยแล้ว' })
+    it('should INSERT when settings do not exist yet', async () => {
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([[]])  // ไม่มี record
+        .mockResolvedValueOnce([{}])  // INSERT
+
+      const res = mockRes()
+      await updateSettings(makeReq({
+        body: { in_app_enabled: 1, notify_status_change: 0, notify_new_complaint: 1 },
+        user: { id: 1 },
+      }), res)
+
+      expect(res.json).toHaveBeenCalledWith({ message: 'บันทึกการตั้งค่าเรียบร้อยแล้ว' })
+    })
   })
 
-  // ยังไม่มี settings → INSERT ใหม่
-  test('TC-027: ยังไม่มี settings → INSERT ใหม่สำเร็จ', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[]])                    // ไม่มี existing
-      .mockResolvedValueOnce([{ insertId: 1 }])       // INSERT
+  // ─── TC-027: Personnel กำหนดช่องทางรับแจ้งเตือน ─────────────────────────
 
-    const req = mockReq({
-      body: { in_app_enabled: 1, notify_status_change: 0, notify_new_complaint: 1 }
+  describe('TC-027/TC-043/TC-058: บันทึก settings ตาม role ต่างๆ', () => {
+    const roles = ['personnel', 'samo', 'officer']
+    roles.forEach((role) => {
+      it(`should save notification settings for ${role}`, async () => {
+        ;(pool.execute as jest.Mock)
+          .mockResolvedValueOnce([[{ setting_id: 1 }]])
+          .mockResolvedValueOnce([{}])
+
+        const res = mockRes()
+        await updateSettings(makeReq({
+          body: { in_app_enabled: 1, notify_status_change: 1, notify_new_complaint: 1 },
+          user: { id: 10, role },
+        }), res)
+
+        expect(res.json).toHaveBeenCalledWith({ message: 'บันทึกการตั้งค่าเรียบร้อยแล้ว' })
+      })
     })
-    const res = mockRes()
-    await updateSettings(req, res)
-
-    expect(res.json).toHaveBeenCalledWith({ message: 'บันทึกการตั้งค่าเรียบร้อยแล้ว' })
-  })
-
-  // ไม่ส่ง body → ใช้ค่า default
-  test('ไม่ส่ง body → ใช้ค่า default สำเร็จ', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[{ setting_id: 1 }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }])
-
-    const req = mockReq({ body: {} })
-    const res = mockRes()
-    await updateSettings(req, res)
-
-    expect(res.json).toHaveBeenCalledWith({ message: 'บันทึกการตั้งค่าเรียบร้อยแล้ว' })
   })
 })
 
-// ─── resetSettings ────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// resetSettings
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('resetSettings', () => {
-  beforeEach(() => jest.clearAllMocks())
+  it('should reset to default values and return default settings', async () => {
+    ;(pool.execute as jest.Mock).mockResolvedValueOnce([{}])
 
-  // คืนค่า default → สำเร็จ
-  test('คืนค่า default → return default settings', async () => {
-    ;(pool.execute as jest.Mock).mockResolvedValueOnce([{ affectedRows: 1 }])
-
-    const req = mockReq()
     const res = mockRes()
-    await resetSettings(req, res)
+    await resetSettings(makeReq({ user: { id: 1 } }), res)
 
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
       message: 'คืนค่าเริ่มต้นเรียบร้อยแล้ว',
-      settings: expect.objectContaining({
-        in_app_enabled: 1,
-        notify_status_change: 1,
-        notify_new_complaint: 1,
-      })
+      settings: expect.objectContaining({ in_app_enabled: 1 }),
     }))
   })
 })

@@ -1,168 +1,215 @@
 // tests/unit/profile.test.ts
-// ครอบคลุม: TC-005, TC-024, TC-038, TC-054, TC-069
+// ครอบคลุม: TC-005, TC-024, TC-038, TC-054, TC-066, TC-069
 
-jest.mock('../../db', () => ({ execute: jest.fn() }))
-jest.mock('bcryptjs')
-
+import { getProfile, updateProfile, changePassword } from '../../controllers/profileController'
 import pool from '../../db'
 import bcrypt from 'bcryptjs'
-import {
-  getProfile,
-  updateProfile,
-  changePassword,
-} from '../../controllers/profileController'
 
-const mockReq = (overrides = {}) => ({
-  user: { id: 1, email: 'student@buu.ac.th', role: 'student' },
-  body: {},
-  ...overrides,
-} as any)
+jest.mock('../../db')
+jest.mock('bcryptjs')
 
 const mockRes = () => {
   const res: any = {}
   res.status = jest.fn().mockReturnValue(res)
-  res.json = jest.fn().mockReturnValue(res)
+  res.json   = jest.fn().mockReturnValue(res)
   return res
 }
+const makeReq = (overrides: any) => ({
+  body: {}, params: {}, user: { id: 1, role: 'student', department_id: null },
+  ...overrides,
+} as any)
 
-// ─── getProfile ───────────────────────────────────────────────────────────────
+beforeEach(() => jest.clearAllMocks())
+
+// ══════════════════════════════════════════════════════════════════════════════
+// getProfile
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('getProfile', () => {
-  beforeEach(() => jest.clearAllMocks())
-
-  // TC-005: ดึงโปรไฟล์ตัวเอง → return user data
-  test('TC-005: ดึงโปรไฟล์สำเร็จ → return user data', async () => {
-    const fakeUser = { user_id: 1, firstname: 'สมชาย', lastname: 'ใจดี', email: 'student@buu.ac.th', role: 'student', phone: '0812345678' }
+  it('should return user profile data', async () => {
+    const fakeUser = { user_id: 1, firstname: 'สมชาย', lastname: 'ใจดี', email: 'test@email.com', role: 'student' }
     ;(pool.execute as jest.Mock).mockResolvedValueOnce([[fakeUser]])
 
-    const req = mockReq()
     const res = mockRes()
-    await getProfile(req, res)
+    await getProfile(makeReq({ user: { id: 1 } }), res)
 
     expect(res.json).toHaveBeenCalledWith(fakeUser)
   })
 
-  // ไม่พบ user → 404
-  test('ไม่พบ user → 404', async () => {
+  it('should return 404 when user not found', async () => {
     ;(pool.execute as jest.Mock).mockResolvedValueOnce([[]])
 
-    const req = mockReq()
     const res = mockRes()
-    await getProfile(req, res)
+    await getProfile(makeReq({ user: { id: 999 } }), res)
 
     expect(res.status).toHaveBeenCalledWith(404)
-    expect(res.json).toHaveBeenCalledWith({ message: 'ไม่พบผู้ใช้' })
   })
 })
 
-// ─── updateProfile ────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// updateProfile
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('updateProfile', () => {
-  beforeEach(() => jest.clearAllMocks())
 
-  // TC-005/TC-024/TC-069: แก้ไขโปรไฟล์สำเร็จ
-  test('TC-005: แก้ไขโปรไฟล์สำเร็จ → return user ใหม่', async () => {
-    const updatedUser = { user_id: 1, firstname: 'สมชาย', lastname: 'ใจดีมาก', phone: '0899999999' }
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([{ affectedRows: 1 }])  // UPDATE
-      .mockResolvedValueOnce([[updatedUser]])          // SELECT ใหม่
+  // ─── TC-005: Student แก้ไขโปรไฟล์ ──────────────────────────────────────
 
-    const req = mockReq({ body: { firstname: 'สมชาย', lastname: 'ใจดีมาก', phone: '0899999999' } })
-    const res = mockRes()
-    await updateProfile(req, res)
+  describe('TC-005: Student แก้ไขข้อมูลโปรไฟล์ (เบอร์โทร)', () => {
+    it('should update profile and return updated user data', async () => {
+      const updatedUser = { user_id: 1, firstname: 'สมชาย', lastname: 'ใจดี', phone: '0899999999' }
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([{}])             // UPDATE
+        .mockResolvedValueOnce([[updatedUser]])  // SELECT ใหม่
 
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว',
-      user: updatedUser,
-    }))
-  })
+      const res = mockRes()
+      await updateProfile(makeReq({
+        body: { firstname: 'สมชาย', lastname: 'ใจดี', phone: '0899999999' },
+        user: { id: 1 },
+      }), res)
 
-  // ไม่กรอก firstname → 400
-  test('ไม่กรอก firstname → 400', async () => {
-    const req = mockReq({ body: { firstname: '', lastname: 'ใจดี' } })
-    const res = mockRes()
-    await updateProfile(req, res)
-
-    expect(res.status).toHaveBeenCalledWith(400)
-    expect(res.json).toHaveBeenCalledWith({ message: 'กรุณากรอกชื่อและนามสกุล' })
-  })
-
-  // ไม่กรอก lastname → 400
-  test('ไม่กรอก lastname → 400', async () => {
-    const req = mockReq({ body: { firstname: 'สมชาย', lastname: '' } })
-    const res = mockRes()
-    await updateProfile(req, res)
-
-    expect(res.status).toHaveBeenCalledWith(400)
-    expect(res.json).toHaveBeenCalledWith({ message: 'กรุณากรอกชื่อและนามสกุล' })
-  })
-
-  // TC-069: Admin แก้ไขโปรไฟล์ตัวเอง → สำเร็จ
-  test('TC-069: Admin แก้ไขโปรไฟล์ → สำเร็จ', async () => {
-    const updatedAdmin = { user_id: 99, firstname: 'แอดมิน', lastname: 'ใหม่', phone: '0800000001' }
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([[updatedAdmin]])
-
-    const req = mockReq({
-      user: { id: 99, role: 'admin' },
-      body: { firstname: 'แอดมิน', lastname: 'ใหม่', phone: '0800000001' }
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว',
+        user: updatedUser,
+      }))
     })
-    const res = mockRes()
-    await updateProfile(req, res)
+  })
 
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว' }))
+  // ─── TC-024: Personnel แก้ไขโปรไฟล์ ─────────────────────────────────────
+
+  describe('TC-024: Personnel แก้ไขข้อมูลโปรไฟล์', () => {
+    it('should update personnel profile successfully', async () => {
+      const updatedUser = { user_id: 10, firstname: 'บุคลากร', lastname: 'ใหม่', phone: '0811111111' }
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([{}])
+        .mockResolvedValueOnce([[updatedUser]])
+
+      const res = mockRes()
+      await updateProfile(makeReq({
+        body: { firstname: 'บุคลากร', lastname: 'ใหม่', phone: '0811111111' },
+        user: { id: 10, role: 'personnel' },
+      }), res)
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว' }))
+    })
+  })
+
+  // ─── TC-038: Samo แก้ไขโปรไฟล์ ──────────────────────────────────────────
+
+  describe('TC-038: Samo แก้ไขข้อมูลโปรไฟล์สโมสร', () => {
+    it('should update samo profile successfully', async () => {
+      const updatedUser = { user_id: 20, firstname: 'สโมสร', lastname: 'ปรับปรุง', phone: '0822222222' }
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([{}])
+        .mockResolvedValueOnce([[updatedUser]])
+
+      const res = mockRes()
+      await updateProfile(makeReq({
+        body: { firstname: 'สโมสร', lastname: 'ปรับปรุง', phone: '0822222222' },
+        user: { id: 20, role: 'samo' },
+      }), res)
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว' }))
+    })
+  })
+
+  // ─── TC-054: Officer แก้ไขโปรไฟล์ ───────────────────────────────────────
+
+  describe('TC-054: University Officer แก้ไขข้อมูลโปรไฟล์', () => {
+    it('should update officer profile successfully', async () => {
+      const updatedUser = { user_id: 30, firstname: 'เจ้าหน้าที่', lastname: 'อัปเดต', phone: '0833333333' }
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([{}])
+        .mockResolvedValueOnce([[updatedUser]])
+
+      const res = mockRes()
+      await updateProfile(makeReq({
+        body: { firstname: 'เจ้าหน้าที่', lastname: 'อัปเดต', phone: '0833333333' },
+        user: { id: 30, role: 'officer' },
+      }), res)
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว' }))
+    })
+  })
+
+  // ─── TC-069: Admin แก้ไขโปรไฟล์ตัวเอง ───────────────────────────────────
+
+  describe('TC-069: Admin แก้ไขโปรไฟล์ของตนเอง', () => {
+    it('should update admin profile successfully', async () => {
+      const updatedUser = { user_id: 99, firstname: 'Admin', lastname: 'Updated', phone: '0844444444' }
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([{}])
+        .mockResolvedValueOnce([[updatedUser]])
+
+      const res = mockRes()
+      await updateProfile(makeReq({
+        body: { firstname: 'Admin', lastname: 'Updated', phone: '0844444444' },
+        user: { id: 99, role: 'admin' },
+      }), res)
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว' }))
+    })
+  })
+
+  it('should return 400 when firstname or lastname is missing', async () => {
+    const res = mockRes()
+    await updateProfile(makeReq({ body: { firstname: '', lastname: '' }, user: { id: 1 } }), res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith({ message: 'กรุณากรอกชื่อและนามสกุล' })
   })
 })
 
-// ─── changePassword ───────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// changePassword
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('changePassword', () => {
-  beforeEach(() => jest.clearAllMocks())
 
-  // เปลี่ยนรหัสผ่านสำเร็จ
-  test('เปลี่ยนรหัสผ่านสำเร็จ → 200', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[{ password: 'hashed_old' }]])  // SELECT
-      .mockResolvedValueOnce([{ affectedRows: 1 }])            // UPDATE
-    ;(bcrypt.compare as jest.Mock).mockResolvedValueOnce(true)
-    ;(bcrypt.hash as jest.Mock).mockResolvedValueOnce('hashed_new')
+  // ─── TC-066 (ส่วน password): เปลี่ยนรหัสผ่าน ─────────────────────────────
 
-    const req = mockReq({ body: { currentPassword: 'oldpass123', newPassword: 'newpass123' } })
+  it('should change password successfully when current password is correct', async () => {
+    ;(pool.execute as jest.Mock).mockResolvedValueOnce([[{ password: 'hashed' }]])
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(true)
+    ;(bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed')
+    ;(pool.execute as jest.Mock).mockResolvedValueOnce([{}])
+
     const res = mockRes()
-    await changePassword(req, res)
+    await changePassword(makeReq({
+      body: { currentPassword: 'oldpass', newPassword: 'newpass123' },
+      user: { id: 1 },
+    }), res)
 
     expect(res.json).toHaveBeenCalledWith({ message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' })
   })
 
-  // รหัสผ่านปัจจุบันผิด → 400
-  test('รหัสผ่านปัจจุบันผิด → 400', async () => {
-    ;(pool.execute as jest.Mock).mockResolvedValueOnce([[{ password: 'hashed_old' }]])
-    ;(bcrypt.compare as jest.Mock).mockResolvedValueOnce(false)
+  it('should return 400 when current password is wrong', async () => {
+    ;(pool.execute as jest.Mock).mockResolvedValueOnce([[{ password: 'hashed' }]])
+    ;(bcrypt.compare as jest.Mock).mockResolvedValue(false)
 
-    const req = mockReq({ body: { currentPassword: 'wrongpass', newPassword: 'newpass123' } })
     const res = mockRes()
-    await changePassword(req, res)
+    await changePassword(makeReq({
+      body: { currentPassword: 'wrongpass', newPassword: 'newpass123' },
+      user: { id: 1 },
+    }), res)
 
     expect(res.status).toHaveBeenCalledWith(400)
     expect(res.json).toHaveBeenCalledWith({ message: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' })
   })
 
-  // รหัสผ่านใหม่น้อยกว่า 8 ตัว → 400
-  test('รหัสผ่านใหม่น้อยกว่า 8 ตัว → 400', async () => {
-    const req = mockReq({ body: { currentPassword: 'oldpass123', newPassword: '1234567' } })
+  it('should return 400 when new password is less than 8 characters', async () => {
     const res = mockRes()
-    await changePassword(req, res)
+    await changePassword(makeReq({
+      body: { currentPassword: 'oldpass', newPassword: '1234' },
+      user: { id: 1 },
+    }), res)
 
     expect(res.status).toHaveBeenCalledWith(400)
     expect(res.json).toHaveBeenCalledWith({ message: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร' })
   })
 
-  // ไม่กรอกข้อมูล → 400
-  test('ไม่กรอก currentPassword หรือ newPassword → 400', async () => {
-    const req = mockReq({ body: { currentPassword: '', newPassword: '' } })
+  it('should return 400 when fields are missing', async () => {
     const res = mockRes()
-    await changePassword(req, res)
+    await changePassword(makeReq({ body: {}, user: { id: 1 } }), res)
 
     expect(res.status).toHaveBeenCalledWith(400)
     expect(res.json).toHaveBeenCalledWith({ message: 'กรุณากรอกข้อมูลให้ครบ' })

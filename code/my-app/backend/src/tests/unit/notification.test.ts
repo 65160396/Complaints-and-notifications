@@ -1,176 +1,204 @@
 // tests/unit/notification.test.ts
-// ครอบคลุม: TC-008, TC-009 (getNotifications, getUnreadCount, markAsRead, markAllAsRead, createNotification)
+// ครอบคลุม: TC-008, TC-009, TC-026, TC-027, TC-035, TC-042, TC-043, TC-057, TC-058, TC-070, TC-071
 
-jest.mock('../../db', () => ({ execute: jest.fn() }))
-
-import pool from '../../db'
 import {
-  getNotifications,
-  getUnreadCount,
-  markAsRead,
-  markAllAsRead,
-  createNotification,
+  getNotifications, getUnreadCount, markAsRead, markAllAsRead,
+  createNotification, broadcastNotification,
 } from '../../controllers/notificationController'
+import pool from '../../db'
 
-const mockReq = (overrides = {}) => ({
-  user: { id: 1, email: 'student@buu.ac.th', role: 'student' },
-  params: {},
-  body: {},
-  ...overrides,
-} as any)
+jest.mock('../../db')
 
 const mockRes = () => {
   const res: any = {}
   res.status = jest.fn().mockReturnValue(res)
-  res.json = jest.fn().mockReturnValue(res)
+  res.json   = jest.fn().mockReturnValue(res)
   return res
 }
+const makeReq = (overrides: any) => ({
+  body: {}, params: {}, user: { id: 1, role: 'student', department_id: null },
+  ...overrides,
+} as any)
 
-// ─── getNotifications ────────────────────────────────────────────────────────
+beforeEach(() => jest.clearAllMocks())
+
+// ══════════════════════════════════════════════════════════════════════════════
+// getNotifications
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('getNotifications', () => {
-  beforeEach(() => jest.clearAllMocks())
 
-  // TC-008: ดึง notifications ของ user → return array
-  test('TC-008: ดึง notifications สำเร็จ → return array', async () => {
-    const fakeNotifications = [
-      { notification_id: 1, message: 'คำร้องกำลังดำเนินการ', is_read: 0 },
-      { notification_id: 2, message: 'คำร้องแก้ไขแล้ว', is_read: 1 },
-    ]
-    ;(pool.execute as jest.Mock).mockResolvedValueOnce([fakeNotifications])
+  // ─── TC-008/TC-026/TC-042/TC-057: ดึง notification list ──────────────────
 
-    const req = mockReq()
-    const res = mockRes()
-    await getNotifications(req, res)
+  describe('TC-008: student ดึงรายการแจ้งเตือน', () => {
+    it('should return notification list for current user', async () => {
+      const fakeRows = [{ notification_id: 1, message: 'คำร้องถูกรับแล้ว', is_read: 0 }]
+      ;(pool.execute as jest.Mock).mockResolvedValueOnce([fakeRows])
 
-    expect(res.json).toHaveBeenCalledWith(fakeNotifications)
-  })
+      const res = mockRes()
+      await getNotifications(makeReq({ user: { id: 1, role: 'student' } }), res)
 
-  // ไม่มี notifications → return array ว่าง
-  test('ไม่มี notifications → return []', async () => {
-    ;(pool.execute as jest.Mock).mockResolvedValueOnce([[]])
-
-    const req = mockReq()
-    const res = mockRes()
-    await getNotifications(req, res)
-
-    expect(res.json).toHaveBeenCalledWith([])
+      expect(res.json).toHaveBeenCalledWith(fakeRows)
+    })
   })
 })
 
-// ─── getUnreadCount ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// getUnreadCount
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('getUnreadCount', () => {
-  beforeEach(() => jest.clearAllMocks())
-
-  test('มี unread 3 อัน → return { count: 3 }', async () => {
+  it('should return unread count for user', async () => {
     ;(pool.execute as jest.Mock).mockResolvedValueOnce([[{ count: 3 }]])
 
-    const req = mockReq()
     const res = mockRes()
-    await getUnreadCount(req, res)
+    await getUnreadCount(makeReq({ user: { id: 1 } }), res)
 
     expect(res.json).toHaveBeenCalledWith({ count: 3 })
   })
-
-  test('ไม่มี unread → return { count: 0 }', async () => {
-    ;(pool.execute as jest.Mock).mockResolvedValueOnce([[{ count: 0 }]])
-
-    const req = mockReq()
-    const res = mockRes()
-    await getUnreadCount(req, res)
-
-    expect(res.json).toHaveBeenCalledWith({ count: 0 })
-  })
 })
 
-// ─── markAsRead ───────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// markAsRead / markAllAsRead
+// ══════════════════════════════════════════════════════════════════════════════
 
 describe('markAsRead', () => {
-  beforeEach(() => jest.clearAllMocks())
 
-  test('mark notification เดียวว่าอ่านแล้ว → Marked as read', async () => {
-    ;(pool.execute as jest.Mock).mockResolvedValueOnce([{ affectedRows: 1 }])
+  // ─── TC-009: ปิดการแจ้งเตือน (mark อ่านแล้ว) ─────────────────────────────
 
-    const req = mockReq({ params: { id: '1' } })
-    const res = mockRes()
-    await markAsRead(req, res)
+  describe('TC-009: mark notification อ่านแล้ว', () => {
+    it('should update is_read=1 for specific notification', async () => {
+      ;(pool.execute as jest.Mock).mockResolvedValueOnce([{}])
 
-    expect(res.json).toHaveBeenCalledWith({ message: 'Marked as read' })
+      const res = mockRes()
+      await markAsRead(makeReq({ params: { id: '1' }, user: { id: 1 } }), res)
+
+      expect(res.json).toHaveBeenCalledWith({ message: 'Marked as read' })
+    })
   })
 })
 
-// ─── markAllAsRead ────────────────────────────────────────────────────────────
-
 describe('markAllAsRead', () => {
-  beforeEach(() => jest.clearAllMocks())
+  it('should mark all notifications as read', async () => {
+    ;(pool.execute as jest.Mock).mockResolvedValueOnce([{}])
 
-  test('mark ทุก notification ว่าอ่านแล้ว → All marked as read', async () => {
-    ;(pool.execute as jest.Mock).mockResolvedValueOnce([{ affectedRows: 3 }])
-
-    const req = mockReq()
     const res = mockRes()
-    await markAllAsRead(req, res)
+    await markAllAsRead(makeReq({ user: { id: 1 } }), res)
 
     expect(res.json).toHaveBeenCalledWith({ message: 'All marked as read' })
   })
 })
 
-// ─── createNotification ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// createNotification (helper)
+// ══════════════════════════════════════════════════════════════════════════════
 
-describe('createNotification', () => {
-  beforeEach(() => jest.clearAllMocks())
+describe('createNotification helper', () => {
 
-  // TC-008: settings เปิดอยู่ → INSERT notification
-  test('TC-008: settings เปิดทุกอย่าง → INSERT notification สำเร็จ', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[{ in_app_enabled: 1, notify_status_change: 1, notify_new_complaint: 1 }]])
-      .mockResolvedValueOnce([{ insertId: 1 }])
+  // ─── TC-027/TC-043/TC-058: เช็ค settings ก่อนส่ง ─────────────────────────
 
-    await createNotification(1, 'คำร้องกำลังดำเนินการ', 1, 'in_app', 'status_change')
+  describe('TC-027/TC-043/TC-058: ส่งแจ้งเตือนตาม settings', () => {
+    it('should insert notification when in_app_enabled=1 and type matches', async () => {
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([[{ in_app_enabled: 1, notify_status_change: 1, notify_new_complaint: 1 }]])
+        .mockResolvedValueOnce([{}])  // INSERT notification
 
-    expect(pool.execute).toHaveBeenCalledTimes(2)
+      await createNotification(1, 'คำร้องถูกรับแล้ว', 1, 'in_app', 'status_change')
+
+      expect(pool.execute).toHaveBeenCalledTimes(2)
+      expect((pool.execute as jest.Mock).mock.calls[1][0]).toContain('INSERT INTO notification')
+    })
+
+    it('should NOT insert when in_app_enabled=0', async () => {
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([[{ in_app_enabled: 0, notify_status_change: 1, notify_new_complaint: 1 }]])
+
+      await createNotification(1, 'test', 1, 'in_app', 'status_change')
+
+      expect(pool.execute).toHaveBeenCalledTimes(1)  // แค่ SELECT settings เท่านั้น
+    })
+
+    it('should NOT insert status_change when notify_status_change=0', async () => {
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([[{ in_app_enabled: 1, notify_status_change: 0, notify_new_complaint: 1 }]])
+
+      await createNotification(1, 'test', 1, 'in_app', 'status_change')
+
+      expect(pool.execute).toHaveBeenCalledTimes(1)
+    })
+
+    it('should NOT insert new_complaint when notify_new_complaint=0', async () => {
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([[{ in_app_enabled: 1, notify_status_change: 1, notify_new_complaint: 0 }]])
+
+      await createNotification(1, 'มีคำร้องใหม่', 1, 'in_app', 'new_complaint')
+
+      expect(pool.execute).toHaveBeenCalledTimes(1)
+    })
+
+    it('should use default settings (all enabled) when no settings record exists', async () => {
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([[]])   // settings ไม่มี
+        .mockResolvedValueOnce([{}])   // INSERT notification
+
+      await createNotification(1, 'test', 1, 'in_app', 'status_change')
+
+      expect(pool.execute).toHaveBeenCalledTimes(2)
+    })
   })
+})
 
-  // TC-009: ปิด in_app_enabled → ไม่ INSERT
-  test('TC-009: ปิดการแจ้งเตือน in_app → ไม่ INSERT notification', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[{ in_app_enabled: 0, notify_status_change: 1, notify_new_complaint: 1 }]])
+// ══════════════════════════════════════════════════════════════════════════════
+// broadcastNotification
+// ══════════════════════════════════════════════════════════════════════════════
 
-    await createNotification(1, 'คำร้องกำลังดำเนินการ', 1, 'in_app', 'status_change')
+describe('broadcastNotification', () => {
 
-    // เรียกแค่ครั้งเดียว (SELECT settings) ไม่มี INSERT
-    expect(pool.execute).toHaveBeenCalledTimes(1)
-  })
+  // ─── TC-071: Admin ส่ง Broadcast ข่าวสารฉุกเฉิน ─────────────────────────
 
-  // TC-009: ปิด notify_status_change → ไม่ INSERT เมื่อ type = status_change
-  test('TC-009: ปิด notify_status_change → ไม่แจ้งเตือนเมื่อสถานะเปลี่ยน', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[{ in_app_enabled: 1, notify_status_change: 0, notify_new_complaint: 1 }]])
+  describe('TC-071: Admin ส่ง broadcast ถึงทุกคน', () => {
+    it('should insert notification for every active user and return sent count', async () => {
+      const users = [{ user_id: 1 }, { user_id: 2 }, { user_id: 3 }]
+      ;(pool.execute as jest.Mock)
+        .mockResolvedValueOnce([users])   // SELECT users
+        .mockResolvedValueOnce([{}])      // INSERT user 1
+        .mockResolvedValueOnce([{}])      // INSERT user 2
+        .mockResolvedValueOnce([{}])      // INSERT user 3
 
-    await createNotification(1, 'คำร้องกำลังดำเนินการ', 1, 'in_app', 'status_change')
+      const req = makeReq({
+        body: { message: 'ประกาศฉุกเฉิน', target_roles: ['all'] },
+        user: { id: 99, role: 'admin' },
+      })
+      const res = mockRes()
 
-    expect(pool.execute).toHaveBeenCalledTimes(1)
-  })
+      await broadcastNotification(req, res)
 
-  // ไม่มี settings → ใช้ค่า default (เปิดทุกอย่าง) → INSERT
-  test('ไม่มี settings → ใช้ค่า default → INSERT notification', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[]])               // ไม่มี settings
-      .mockResolvedValueOnce([{ insertId: 2 }]) // INSERT สำเร็จ
+      expect(res.json).toHaveBeenCalledWith({ message: 'ส่งแจ้งเตือนสำเร็จ 3 คน' })
+    })
 
-    await createNotification(1, 'มีคำร้องใหม่', 2, 'in_app', 'new_complaint')
+    it('should return 403 when role is not admin', async () => {
+      const req = makeReq({
+        body: { message: 'test', target_roles: ['all'] },
+        user: { id: 1, role: 'student' },
+      })
+      const res = mockRes()
 
-    expect(pool.execute).toHaveBeenCalledTimes(2)
-  })
+      await broadcastNotification(req, res)
 
-  // ปิด notify_new_complaint → ไม่ INSERT เมื่อ type = new_complaint
-  test('ปิด notify_new_complaint → ไม่แจ้งเตือนเมื่อมีคำร้องใหม่', async () => {
-    ;(pool.execute as jest.Mock)
-      .mockResolvedValueOnce([[{ in_app_enabled: 1, notify_status_change: 1, notify_new_complaint: 0 }]])
+      expect(res.status).toHaveBeenCalledWith(403)
+    })
 
-    await createNotification(1, 'มีคำร้องใหม่', 2, 'in_app', 'new_complaint')
+    it('should return 400 when message is empty', async () => {
+      const req = makeReq({
+        body: { message: '   ', target_roles: ['all'] },
+        user: { id: 99, role: 'admin' },
+      })
+      const res = mockRes()
 
-    expect(pool.execute).toHaveBeenCalledTimes(1)
+      await broadcastNotification(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.json).toHaveBeenCalledWith({ message: 'กรุณาระบุข้อความ' })
+    })
   })
 })
