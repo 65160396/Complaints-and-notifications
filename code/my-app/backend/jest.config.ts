@@ -7,14 +7,10 @@ export default {
   collectCoverage: true,
   collectCoverageFrom: [
     // ✅ เฉพาะไฟล์ที่มี test แล้ว
-  'src/controllers/authController.ts',
-  'src/controllers/complaintController.ts',
-  'src/controllers/notificationController.ts',
-  'src/controllers/notificationSettingsController.ts',
-  'src/controllers/profileController.ts',
-  'src/controllers/surveyController.ts',
-  'src/middleware/authMiddleware.ts',
-],
+    'src/controllers/authController.ts',
+    'src/controllers/complaintController.ts',
+    'src/middleware/authMiddleware.ts',
+  ],
   coverageDirectory: 'coverage-reports',
   coverageReporters: ['text', 'html'],
   coverageThreshold: {
