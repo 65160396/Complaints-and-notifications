@@ -39,22 +39,22 @@ const roleBadgeColor: Record<string, string> = {
 
 const navLinksByRole: Record<string, { href: string; label: string }[]> = {
  student: [
-    { href: '/my-complaints',    label: 'คำร้องของฉัน' },
-    { href: '/create-complaint', label: '+ แจ้งเรื่อง' },
+    // { href: '/my-complaints',    label: 'คำร้องของฉัน' },
+    // { href: '/create-complaint', label: '+ แจ้งเรื่อง' },
   ],
   personnel: [
-    { href: '/complaints',       label: 'รายการในคณะ' },
-    { href: '/my-complaints',    label: 'คำร้องของฉัน' },
-    { href: '/create-complaint', label: '+ แจ้งเรื่อง' },
+    // { href: '/complaints',       label: 'รายการในคณะ' },
+    // { href: '/my-complaints',    label: 'คำร้องของฉัน' },
+    // { href: '/create-complaint', label: '+ แจ้งเรื่อง' },
   ],
   samo: [
-    { href: '/dashboard', label: 'Dashboard' },
+    //{ href: '/dashboard', label: 'Dashboard' },
   ],
   officer: [
-    { href: '/dashboard', label: 'Dashboard' },
+    //{ href: '/dashboard', label: 'Dashboard' },
   ],
   admin: [
-    { href: '/admin', label: 'Admin' },
+    // { href: '/admin', label: 'Admin' },
   ],
 }
 
@@ -124,7 +124,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <div className="w-full px-6 h-14 flex items-center justify-between">
 
         {/* Logo */}
         <button onClick={() => {

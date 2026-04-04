@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="th">
       <body className={`${sarabun.variable} font-[family-name:var(--font-sarabun)] antialiased bg-gray-50`}>
-        <Navbar />
+        {/* <Navbar /> */}
         {children}
       </body>
     </html>
