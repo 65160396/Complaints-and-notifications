@@ -25,7 +25,7 @@ export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body
   const [rows]: any = await pool.execute('SELECT * FROM app_user WHERE email = ?', [email])
   const user = rows[0]
-  if (!user) {
+  if (!user || !(await bcrypt.compare(password, user.password))) {
   // บันทึก failed login
   await pool.execute(
     'INSERT INTO system_log (type, message, ip_address) VALUES (?, ?, ?)',
