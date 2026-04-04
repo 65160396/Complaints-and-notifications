@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import api, { getUser } from '../lib/api'
+import api, { getUser } from '../../lib/api'
 
 export default function CreateComplaintPage() {
   const router = useRouter()

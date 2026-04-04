@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import api, { getUser } from '../lib/api'
+import api, { getUser } from '../../lib/api'
 
 interface Profile {
   user_id: number
@@ -50,7 +50,10 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const user = getUser()
-    if (!user) { router.push('/login'); return }
+    if (!user) { 
+      router.push('/login'); 
+      return 
+    }
 
     api.get('/profile')
       .then(res => {

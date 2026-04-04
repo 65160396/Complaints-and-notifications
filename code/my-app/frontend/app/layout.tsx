@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Sarabun } from 'next/font/google'
 import './globals.css'
-import Navbar from './components/Navbar'
 
 const sarabun = Sarabun({
   variable: '--font-sarabun',
@@ -16,13 +15,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="th">
-      <body className={`${sarabun.variable} font-[family-name:var(--font-sarabun)] antialiased bg-gray-50`}>
-        <Navbar />
+      <body
+        className={`${sarabun.variable} font-[family-name:var(--font-sarabun)] antialiased bg-gray-50 text-gray-900`}
+      >
         {children}
       </body>
     </html>
