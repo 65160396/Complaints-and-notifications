@@ -151,6 +151,7 @@
 | 4 | เจ้าหน้าที่มหาวิทยาลัยรับงาน มอบหมายทีมช่าง และจบงาน                    | Pass      | 0    | ✓      |
 | 5 | ผู้ดูแลระบบจัดการข้อมูลหลัก สิทธิ์ผู้ใช้ และออกรายงาน                   | Pass      | 0    | ✓      |
 
-การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	 <img width="50" height="50" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />	Date:5 / 4 / 2569
+การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	     <img width="50" height="50" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />	  
+Date:5 / 4 / 2569
 
 
