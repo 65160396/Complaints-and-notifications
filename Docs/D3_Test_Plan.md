@@ -27,7 +27,7 @@
 
 - Unit Testing
 - ทดสอบ: ฟังก์ชัน, methods, logic
-- ขอบเขต: 76 test cases
+- ขอบเขต: 93 test cases
 - Coverage: >= 80%
 - Framework: Jest
 
