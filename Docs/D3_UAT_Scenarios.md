@@ -152,7 +152,9 @@
 | 5 | ผู้ดูแลระบบจัดการข้อมูลหลัก สิทธิ์ผู้ใช้ และออกรายงาน                   | Pass      | 0    | ✓      |
 
 **สถานะโดยรวม:** ผ่านทุกสถานการณ์ 
+
 **การอนุมัติเอกสาร:**  Product Owner	 อารี แก้วสีคร้าม	   (Signature: <img width="50" height="50" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" /> )
-**Date:5 / 4 / 2569 **
+
+Date:5 / 4 / 2569 
 
 
