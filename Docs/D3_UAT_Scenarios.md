@@ -30,7 +30,7 @@
 
 **ผลการทดสอบ:**
 
-**ลายมือชื่อ:** <img width="240" height="350" alt="ลายเซน" src="https://github.com/user-attachments/assets/d0aa4d04-d712-482c-ad00-9c6bfb155c28" />
+**ลายมือชื่อ:** <img width="50" height="50" alt="ลายเซน" src="https://github.com/user-attachments/assets/d0aa4d04-d712-482c-ad00-9c6bfb155c28" />
 
 
  
@@ -151,6 +151,6 @@
 | 4 | เจ้าหน้าที่มหาวิทยาลัยรับงาน มอบหมายทีมช่าง และจบงาน                    | ___      | ___    | ___      |
 | 5 | ผู้ดูแลระบบจัดการข้อมูลหลัก สิทธิ์ผู้ใช้ และออกรายงาน                   | ___      | ___    | ___      |
 
-การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	 <img width="240" height="350" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />	Date:___ / ___ / ___
+การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	 <img width="50" height="50" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />	Date:___ / ___ / ___
 
 
