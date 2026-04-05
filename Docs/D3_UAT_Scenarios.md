@@ -1,4 +1,4 @@
-<img width="2480" height="3508" alt="ลายเซน" src="https://github.com/user-attachments/assets/da4de296-c2cd-478a-9168-b7b7d8ffeba2" /># UAT (User Acceptance Testing) Scenarios
+# UAT (User Acceptance Testing) Scenarios
 
 ## Scenario 1: นิสิตแจ้งปัญหา ติดตามสถานะ และประเมินผล
 **Objective:** นิสิตสามารถแจ้งปัญหา ติดตามสถานะ และประเมินความพึงพอใจได้สำเร็จ
@@ -30,7 +30,8 @@
 
 **ผลการทดสอบ:**
 
-**ลายมือชื่อ:** __________________
+**ลายมือชื่อ:** <img width="240" height="350" alt="ลายเซน" src="https://github.com/user-attachments/assets/d0aa4d04-d712-482c-ad00-9c6bfb155c28" />
+
 
  
 ## Scenario 2: บุคลากรแจ้งเรื่องร้องเรียนเชิงนโยบายพร้อมกำหนดความเร่งด่วน
@@ -150,7 +151,6 @@
 | 4 | เจ้าหน้าที่มหาวิทยาลัยรับงาน มอบหมายทีมช่าง และจบงาน                    | ___      | ___    | ___      |
 | 5 | ผู้ดูแลระบบจัดการข้อมูลหลัก สิทธิ์ผู้ใช้ และออกรายงาน                   | ___      | ___    | ___      |
 
-การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	 __<img width="240" height="350" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />
-_______________________	Date:___ / ___ / ___
+การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	 <img width="240" height="350" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />	Date:___ / ___ / ___
 
 
