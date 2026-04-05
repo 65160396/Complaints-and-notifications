@@ -150,7 +150,7 @@
 | 4 | เจ้าหน้าที่มหาวิทยาลัยรับงาน มอบหมายทีมช่าง และจบงาน                    | ___      | ___    | ___      |
 | 5 | ผู้ดูแลระบบจัดการข้อมูลหลัก สิทธิ์ผู้ใช้ และออกรายงาน                   | ___      | ___    | ___      |
 
-การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	 __<img width="2480" height="3508" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />
+การอนุมัติเอกสาร: Product Owner	 อารี แก้วสีคร้าม	 __<img width="240" height="350" alt="ลายเซน" src="https://github.com/user-attachments/assets/c4c37245-d620-4937-9bc2-c2d6a7f2a7ce" />
 _______________________	Date:___ / ___ / ___
 
 
