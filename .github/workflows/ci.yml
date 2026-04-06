@@ -61,9 +61,9 @@ jobs:
         working-directory: code/my-app/frontend
         run: npm install
 
-      - name: Lint
+     - name: Lint
         working-directory: code/my-app/frontend
-        run: npx eslint app --ext .ts,.tsx
+        run: npx eslint app --ext .ts,.tsx --max-warnings=50
 
       - name: Type check
         working-directory: code/my-app/frontend
