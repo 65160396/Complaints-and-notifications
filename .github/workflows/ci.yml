@@ -53,7 +53,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "npm"
           cache-dependency-path: code/my-app/frontend/package-lock.json
 
@@ -65,7 +65,7 @@ jobs:
         working-directory: code/my-app/frontend
         run: npx eslint app --ext .ts,.tsx --max-warnings=100
         continue-on-error: true
-        
+
       - name: Type check
         working-directory: code/my-app/frontend
         run: npx tsc --noEmit --skipLibCheck
