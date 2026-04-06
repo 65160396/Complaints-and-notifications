@@ -1,0 +1,74 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [master, develop, production]
+  pull_request:
+    branches: [master, production]
+
+jobs:
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: code/my-app/backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: code/my-app/backend
+        run: npm install
+
+      - name: Lint
+        working-directory: code/my-app/backend
+        run: npx eslint src --ext .ts
+
+      - name: Type check
+        working-directory: code/my-app/backend
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: code/my-app/backend
+        run: npm test
+
+      - name: Build
+        working-directory: code/my-app/backend
+        run: npm run build
+
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: code/my-app/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: code/my-app/frontend
+        run: npm install
+
+      - name: Lint
+        working-directory: code/my-app/frontend
+        run: npx eslint app --ext .ts,.tsx
+
+      - name: Type check
+        working-directory: code/my-app/frontend
+        run: npx tsc --noEmit --skipLibCheck
+
+      - name: Build
+        working-directory: code/my-app/frontend
+        run: npm run build
